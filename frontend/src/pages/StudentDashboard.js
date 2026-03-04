@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getToken } from "../utils/auth";
+import ChatBot from "../components/ChatBot";
 import "./StudentDashboard.css";
 
 function StudentDashboard() {
@@ -101,10 +102,10 @@ function StudentDashboard() {
         return;
       }
 
-      
+
       setRoles(data.analysis?.roles || []);
       setEvaluation(null);
-  
+
 
     } catch {
       alert("Server error");
@@ -112,7 +113,7 @@ function StudentDashboard() {
   };
 
   const handleRoleSelection = async (role) => {
-    
+
 
     try {
       const response = await fetch(
@@ -257,6 +258,9 @@ function StudentDashboard() {
 
         </div>
       )}
+
+      {/* Personalised ChatBot */}
+      <ChatBot resumeId={selectedResumeId} />
 
     </div>
   );
