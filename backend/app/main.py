@@ -13,6 +13,7 @@ from backend.app.models.analysis import AnalysisResult
 from backend.app.auth.routes import router as auth_router
 from backend.app.student.routes import router as student_router
 from backend.app.recruiter.routes import router as recruiter_router
+from backend.app.chatbot.routes import router as chatbot_router
 
 app = FastAPI(
     title="Mimini Backend",
@@ -33,6 +34,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(student_router)
 app.include_router(recruiter_router)
+app.include_router(chatbot_router)
 
 def custom_openapi():
     if app.openapi_schema:
