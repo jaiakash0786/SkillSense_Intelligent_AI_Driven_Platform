@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
-from jose import jwt
+from jose import jwt, JWTError
 import os
-from jose import JWTError
-# TEMP secret (move to .env later)
+
 SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM =os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES =int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 
 def verify_access_token(token: str):
@@ -14,6 +13,7 @@ def verify_access_token(token: str):
         return payload
     except JWTError:
         return None
+
 
 def create_access_token(data: dict, expires_delta: int | None = None):
     to_encode = data.copy()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
 import os
 import shutil
 from sqlalchemy.orm import Session
@@ -30,10 +30,20 @@ def get_db():
         db.close()
 
 
+def require_student(current_user: dict = Depends(get_current_user)):
+    """Ensures only users with role='student' can access student routes."""
+    if current_user.get("role") != "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: students only"
+        )
+    return current_user
+
+
 @router.post("/resume/upload")
 def upload_resume(
     resume: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_student),
     db: Session = Depends(get_db)
 ):
     upload_dir = "uploads"
@@ -61,14 +71,11 @@ def upload_resume(
     db.commit()
     db.refresh(new_resume)
 
-    db.close()
-
+    # Run AI pipeline within the same session — no manual db.close() + re-open
     ai_result = run_pipeline(
         resume_path=file_path,
         target_role=None
     )
-
-    db = SessionLocal()
 
     analysis = AnalysisResult(
         resume_id=new_resume.id,
@@ -78,7 +85,6 @@ def upload_resume(
     db.add(analysis)
     db.commit()
     db.refresh(analysis)
-    db.close()
 
     return {
         "message": "Resume uploaded successfully. Select a role to evaluate ATS.",
@@ -92,7 +98,7 @@ def upload_resume(
 def evaluate_resume_for_role(
     resume_id: int,
     payload: RoleSelectionRequest,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_student),
     db: Session = Depends(get_db)
 ):
     db_user = db.query(User).filter(
@@ -141,7 +147,7 @@ def evaluate_resume_for_role(
 @router.get("/resume/{resume_id}")
 def get_resume_analysis(
     resume_id: int,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_student),
     db: Session = Depends(get_db)
 ):
     db_user = db.query(User).filter(
@@ -176,7 +182,7 @@ def get_resume_analysis(
 
 @router.get("/resumes")
 def list_my_resumes(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_student),
     db: Session = Depends(get_db)
 ):
     db_user = db.query(User).filter(

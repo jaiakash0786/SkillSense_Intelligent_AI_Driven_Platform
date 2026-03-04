@@ -1,28 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from backend.app.db.database import SessionLocal
+from backend.app.models.user import User
 from backend.app.schemas.user import UserCreate, UserLogin
 from backend.app.utils.jwt import create_access_token
+from backend.app.utils.security import hash_password, verify_password
 from backend.app.auth.dependencies import get_current_user
-from fastapi import Depends
-from backend.app.utils.security import hash_password
-from backend.app.utils.security import verify_password
-from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
-
-from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
-
-from backend.app.db.database import SessionLocal
-from backend.app.models.user import User
-from backend.app.utils.security import verify_password
-from backend.app.utils.jwt import create_access_token
-
-from backend.app.db.database import SessionLocal
-from backend.app.models.user import User
-from backend.app.utils.security import hash_password
-
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -30,12 +19,12 @@ def get_db():
     finally:
         db.close()
 
+
 @router.post("/register")
 def register(
     user: UserCreate,
     db: Session = Depends(get_db)
 ):
-    # Check if user already exists
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(
@@ -61,6 +50,7 @@ def register(
         "email": new_user.email,
         "role": new_user.role
     }
+
 
 @router.post("/login")
 def login(

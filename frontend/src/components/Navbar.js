@@ -1,40 +1,40 @@
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getUserFromToken } from "../utils/auth";
 import "./Navbar.css";
 
 function Navbar() {
-
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const isActive = (path) =>
-    location.pathname === path ? "nav-link active" : "nav-link";
+  // Hide navbar entirely on login and register pages
+  const hideNavbar = ["/login", "/register"].includes(location.pathname);
+  if (hideNavbar) return null;
+
+  const user = getUserFromToken();
+
+  const handleLogout = () => {
+    localStorage.removeItem("access_token");
+    navigate("/login");
+  };
 
   return (
     <div className="navbar">
-
       {/* Logo */}
-      <div className="logo">
-        MIMINI
-      </div>
+      <div className="logo">MIMINI</div>
 
-      {/* Links */}
+      {/* Right side: show role label + logout when logged in */}
       <div className="nav-links">
-        <Link className={isActive("/login")} to="/login">
-          Login
-        </Link>
-
-        <Link className={isActive("/register")} to="/register">
-          Register
-        </Link>
-
-        <Link className={isActive("/student")} to="/student">
-          Student
-        </Link>
-
-        <Link className={isActive("/recruiter")} to="/recruiter">
-          Recruiter
-        </Link>
+        {user && (
+          <>
+            <span className="nav-role-badge">
+              {user.role === "recruiter" ? "🏢 Recruiter" : "🎓 Student"}
+            </span>
+            <button className="nav-logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
+          </>
+        )}
       </div>
-
     </div>
   );
 }
