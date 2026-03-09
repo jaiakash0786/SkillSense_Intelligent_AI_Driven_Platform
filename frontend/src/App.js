@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import StudentDashboard from "./pages/StudentDashboard";
 import RecruiterDashboard from "./pages/RecruiterDashboard";
+import ProgressTracker from "./pages/ProgressTracker";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
@@ -52,6 +53,16 @@ function App() {
           element={
             <ProtectedRoute requiredRole="recruiter">
               <RecruiterDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Progress Tracker */}
+        <Route
+          path="/progress"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <ProgressTracker />
             </ProtectedRoute>
           }
         />
