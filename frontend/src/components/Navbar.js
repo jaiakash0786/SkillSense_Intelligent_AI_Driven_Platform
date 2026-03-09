@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { getUserFromToken } from "../utils/auth";
 import "./Navbar.css";
 
@@ -29,6 +29,9 @@ function Navbar() {
             <span className="nav-role-badge">
               {user.role === "recruiter" ? "🏢 Recruiter" : "🎓 Student"}
             </span>
+            {user.role === "student" && (
+              <Link to="/progress" className="nav-progress-link">📊 My Progress</Link>
+            )}
             <button className="nav-logout-btn" onClick={handleLogout}>
               Logout
             </button>

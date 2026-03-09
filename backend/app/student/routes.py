@@ -9,6 +9,7 @@ from backend.app.db.database import SessionLocal
 from backend.app.models.resume import Resume
 from backend.app.models.user import User
 from backend.app.models.analysis import AnalysisResult
+from backend.app.models.score_history import ScoreHistory
 from backend.app.services.pipeline import run_pipeline
 
 
@@ -136,6 +137,17 @@ def evaluate_resume_for_role(
 
     db.commit()
     db.refresh(analysis)
+
+    # Auto-record ATS score in history for the Progress Tracker
+    ats_score = result.get("ats", {}).get("ats_score") if result.get("ats") else None
+    score_entry = ScoreHistory(
+        user_id=db_user.id,
+        resume_id=resume.id,
+        role=payload.target_role,
+        ats_score=ats_score
+    )
+    db.add(score_entry)
+    db.commit()
 
     return {
         "target_role": payload.target_role,

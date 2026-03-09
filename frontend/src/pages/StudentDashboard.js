@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getToken } from "../utils/auth";
 import ChatBot from "../components/ChatBot";
 import "./StudentDashboard.css";
 
 function StudentDashboard() {
+  const navigate = useNavigate();
   const [resumes, setResumes] = useState([]);
   const [error, setError] = useState("");
   const [file, setFile] = useState(null);
@@ -230,6 +232,33 @@ function StudentDashboard() {
               ))}
           </ul>
 
+          {/* View Progress CTA — pinned before the long learning path */}
+          <div style={{ textAlign: "center", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}>
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+            <button
+              onClick={() => navigate("/progress")}
+              style={{
+                padding: "12px 28px",
+                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                fontSize: "14px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 4px 18px rgba(139,92,246,0.35)",
+                transition: "all 0.3s ease",
+                letterSpacing: "0.3px",
+                whiteSpace: "nowrap",
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(139,92,246,0.5)"; }}
+              onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(139,92,246,0.35)"; }}
+            >
+              📊 View My Progress →
+            </button>
+            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+          </div>
+
           <h4>Learning Path</h4>
           <div className="learning-grid">
             {evaluation.learning_path?.learning_path?.map((item, index) => (
@@ -256,6 +285,32 @@ function StudentDashboard() {
             ))}
           </div>
 
+        </div>
+      )}
+
+      {/* View Progress CTA */}
+      {evaluation && (
+        <div style={{ textAlign: "center", marginTop: "-10px", marginBottom: "30px", position: "relative", zIndex: 1 }}>
+          <button
+            onClick={() => navigate("/progress")}
+            style={{
+              padding: "13px 32px",
+              background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
+              color: "white",
+              border: "none",
+              borderRadius: "10px",
+              fontSize: "15px",
+              fontWeight: "700",
+              cursor: "pointer",
+              boxShadow: "0 4px 18px rgba(139,92,246,0.35)",
+              transition: "all 0.3s ease",
+              letterSpacing: "0.3px",
+            }}
+            onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(139,92,246,0.5)"; }}
+            onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(139,92,246,0.35)"; }}
+          >
+            📊 View My Progress →
+          </button>
         </div>
       )}
 
