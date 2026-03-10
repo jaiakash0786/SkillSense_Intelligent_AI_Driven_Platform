@@ -1,0 +1,446 @@
+/* ─────────────────────────────────────────────
+   LearningPath.css  — Visual Roadmap Page
+───────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Wrapper ── */
+.lp-wrap {
+    min-height: 100vh;
+    background: #0f0f1a;
+    color: #e2e8f0;
+    font-family: 'Inter', sans-serif;
+    padding-bottom: 80px;
+}
+
+/* ── Hero Header ── */
+.lp-header {
+    background: linear-gradient(135deg, #1a1a3e 0%, #0f1623 60%, #0f0f1a 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 52px 24px 40px;
+}
+
+.lp-header-inner {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.lp-header-tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 16px;
+}
+
+.lp-header-title {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 40%, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0 0 16px;
+    line-height: 1.2;
+}
+
+.lp-timeline-badge {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    padding: 5px 16px;
+    margin-bottom: 24px;
+}
+
+/* ── Progress Bar ── */
+.lp-progress-wrap {
+    margin-top: 8px;
+    max-width: 560px;
+}
+
+.lp-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.lp-progress-bar {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.lp-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Content ── */
+.lp-content {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 0;
+}
+
+.lp-skills-count {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+    margin-bottom: 32px;
+    letter-spacing: 0.5px;
+}
+
+/* ── Timeline ── */
+.lp-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* ── Single roadmap item ── */
+.lp-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    opacity: 0;
+    animation: lp-fadein 0.5s ease forwards;
+}
+
+@keyframes lp-fadein {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ── Node column ── */
+.lp-node-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    padding-top: 18px;
+}
+
+.lp-node {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2.5px solid;
+    background: #0f0f1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: #e2e8f0;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+.lp-connector {
+    width: 2px;
+    flex: 1;
+    min-height: 24px;
+    background: linear-gradient(to bottom, rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.1));
+    margin: 4px 0;
+}
+
+/* ── Skill Card ── */
+.lp-card {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: box-shadow 0.25s ease, background 0.25s ease;
+}
+
+.lp-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.lp-card-header {
+    padding: 18px 20px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.lp-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.lp-skill-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+
+.lp-level-badge {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 20px;
+    padding: 3px 12px;
+    letter-spacing: 0.5px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+}
+
+.lp-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.lp-topic-count {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.lp-done-count {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.lp-expand-chevron {
+    font-size: 10px;
+    color: #475569;
+    margin-left: auto;
+}
+
+/* ── Card Body ── */
+.lp-card-body {
+    padding: 0 20px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    animation: lp-fadein 0.3s ease;
+}
+
+.lp-section {
+    margin-top: 18px;
+}
+
+.lp-section h4 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    margin: 0 0 12px;
+}
+
+/* ── Checklist ── */
+.lp-checklist {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lp-check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #cbd5e1;
+    cursor: pointer;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+    line-height: 1.5;
+}
+
+.lp-check-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.lp-check-item.done {
+    color: #64748b;
+    text-decoration: line-through;
+}
+
+.lp-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+    transition: background 0.15s ease;
+}
+
+/* ── Projects ── */
+.lp-projects {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lp-project-item {
+    font-size: 14px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.03);
+    border-left: 3px solid;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    line-height: 1.5;
+    transition: background 0.15s ease;
+}
+
+.lp-project-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Bottom CTA row ── */
+.lp-bottom-cta {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 48px;
+    flex-wrap: wrap;
+}
+
+.lp-cta-btn {
+    padding: 12px 28px;
+    background: linear-gradient(135deg, #8b5cf6, #ec4899);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(139, 92, 246, 0.35);
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
+    font-family: 'Inter', sans-serif;
+}
+
+.lp-cta-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.5);
+}
+
+.lp-cta-btn.secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    color: #94a3b8;
+}
+
+.lp-cta-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: none;
+    color: #e2e8f0;
+}
+
+/* ── Loading ── */
+.lp-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 80px 20px;
+    gap: 20px;
+    color: #64748b;
+    font-size: 15px;
+}
+
+.lp-spinner {
+    width: 42px;
+    height: 42px;
+    border: 3px solid rgba(139, 92, 246, 0.2);
+    border-top-color: #8b5cf6;
+    border-radius: 50%;
+    animation: lp-spin 0.8s linear infinite;
+}
+
+@keyframes lp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Empty ── */
+.lp-empty {
+    text-align: center;
+    padding: 80px 20px;
+}
+
+.lp-empty-icon {
+    font-size: 52px;
+    margin-bottom: 20px;
+}
+
+.lp-empty h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: #e2e8f0;
+    margin: 0 0 10px;
+}
+
+.lp-empty p {
+    font-size: 15px;
+    color: #64748b;
+    max-width: 420px;
+    margin: 0 auto 28px;
+    line-height: 1.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .lp-header {
+        padding: 36px 16px 28px;
+    }
+
+    .lp-content {
+        padding: 28px 16px 0;
+    }
+
+    .lp-node {
+        width: 34px;
+        height: 34px;
+        font-size: 11px;
+    }
+
+    .lp-skill-name {
+        font-size: 15px;
+    }
+}

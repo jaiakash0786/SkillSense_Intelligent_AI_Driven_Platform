@@ -30,7 +30,10 @@ function Navbar() {
               {user.role === "recruiter" ? "🏢 Recruiter" : "🎓 Student"}
             </span>
             {user.role === "student" && (
-              <Link to="/progress" className="nav-progress-link">📊 My Progress</Link>
+              <>
+                <Link to="/progress" className="nav-progress-link">📊 My Progress</Link>
+                <Link to="/learning-path" className="nav-progress-link">🗺️ Learning Path</Link>
+              </>
             )}
             <button className="nav-logout-btn" onClick={handleLogout}>
               Logout

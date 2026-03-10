@@ -122,19 +122,14 @@ def evaluate_resume_for_role(
         target_role=payload.target_role
     )
 
-    analysis = db.query(AnalysisResult).filter(
-        AnalysisResult.resume_id == resume.id
-    ).first()
-
-    if analysis:
-        analysis.result = result
-    else:
-        analysis = AnalysisResult(
-            resume_id=resume.id,
-            result=result
-        )
-        db.add(analysis)
-
+    # Always create a NEW AnalysisResult per role evaluation.
+    # Do NOT overwrite — this preserves history so the recruiter
+    # sees the correct score per role via ScoreHistory.
+    analysis = AnalysisResult(
+        resume_id=resume.id,
+        result=result
+    )
+    db.add(analysis)
     db.commit()
     db.refresh(analysis)
 
@@ -189,6 +184,57 @@ def get_resume_analysis(
         "filename": resume.original_filename,
         "uploaded_at": resume.uploaded_at,
         "analysis": analysis.result
+    }
+
+
+@router.get("/learning-path")
+def get_learning_path(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(get_db)
+):
+    """Return the learning path from the most recent resume evaluation for this student."""
+    db_user = db.query(User).filter(
+        User.email == current_user["sub"]
+    ).first()
+
+    if not db_user:
+        return {"error": "User not found"}
+
+    # Get all resumes for this user, find the one with analysis containing a learning_path
+    resumes = db.query(Resume).filter(
+        Resume.user_id == db_user.id
+    ).all()
+
+    if not resumes:
+        return {"learning_path": None, "message": "No resumes found"}
+
+    latest_analysis = None
+    latest_role = None
+
+    # Check analyses in reverse order — get the MOST RECENT AnalysisResult per resume
+    for resume in reversed(resumes):
+        analysis = (
+            db.query(AnalysisResult)
+            .filter(AnalysisResult.resume_id == resume.id)
+            .order_by(AnalysisResult.id.desc())
+            .first()
+        )
+        if analysis and analysis.result:
+            lp = analysis.result.get("learning_path")
+            role = analysis.result.get("target_role") or (
+                analysis.result.get("ats", {}) or {}
+            ).get("target_role")
+            if lp:
+                latest_analysis = lp
+                latest_role = role
+                break
+
+    if not latest_analysis:
+        return {"learning_path": None, "message": "No learning path generated yet. Please evaluate a resume first."}
+
+    return {
+        "target_role": latest_role,
+        "learning_path": latest_analysis
     }
 
 
