@@ -232,7 +232,7 @@ function StudentDashboard() {
               ))}
           </ul>
 
-          {/* View Progress CTA — pinned before the long learning path */}
+          {/* CTA buttons — pinned before the long learning path */}
           <div style={{ textAlign: "center", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}>
             <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
             <button
@@ -255,6 +255,27 @@ function StudentDashboard() {
               onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(139,92,246,0.35)"; }}
             >
               📊 View My Progress →
+            </button>
+            <button
+              onClick={() => navigate("/learning-path")}
+              style={{
+                padding: "12px 28px",
+                background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                fontSize: "14px",
+                fontWeight: "700",
+                cursor: "pointer",
+                boxShadow: "0 4px 18px rgba(14,165,233,0.35)",
+                transition: "all 0.3s ease",
+                letterSpacing: "0.3px",
+                whiteSpace: "nowrap",
+              }}
+              onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(14,165,233,0.5)"; }}
+              onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(14,165,233,0.35)"; }}
+            >
+              🗺️ View Learning Path →
             </button>
             <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
           </div>

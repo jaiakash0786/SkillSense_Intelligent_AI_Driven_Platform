@@ -192,6 +192,54 @@ def get_resume_analysis(
     }
 
 
+@router.get("/learning-path")
+def get_learning_path(
+    current_user: dict = Depends(require_student),
+    db: Session = Depends(get_db)
+):
+    """Return the learning path from the most recent resume evaluation for this student."""
+    db_user = db.query(User).filter(
+        User.email == current_user["sub"]
+    ).first()
+
+    if not db_user:
+        return {"error": "User not found"}
+
+    # Get all resumes for this user, find the one with analysis containing a learning_path
+    resumes = db.query(Resume).filter(
+        Resume.user_id == db_user.id
+    ).all()
+
+    if not resumes:
+        return {"learning_path": None, "message": "No resumes found"}
+
+    latest_analysis = None
+    latest_role = None
+
+    # Check analyses in reverse order to get most recent with a learning path
+    for resume in reversed(resumes):
+        analysis = db.query(AnalysisResult).filter(
+            AnalysisResult.resume_id == resume.id
+        ).first()
+        if analysis and analysis.result:
+            lp = analysis.result.get("learning_path")
+            role = analysis.result.get("target_role") or (
+                analysis.result.get("ats", {}) or {}
+            ).get("target_role")
+            if lp:
+                latest_analysis = lp
+                latest_role = role
+                break
+
+    if not latest_analysis:
+        return {"learning_path": None, "message": "No learning path generated yet. Please evaluate a resume first."}
+
+    return {
+        "target_role": latest_role,
+        "learning_path": latest_analysis
+    }
+
+
 @router.get("/resumes")
 def list_my_resumes(
     current_user: dict = Depends(require_student),
