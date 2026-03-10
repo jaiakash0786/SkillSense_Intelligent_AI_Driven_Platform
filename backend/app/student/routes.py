@@ -122,19 +122,14 @@ def evaluate_resume_for_role(
         target_role=payload.target_role
     )
 
-    analysis = db.query(AnalysisResult).filter(
-        AnalysisResult.resume_id == resume.id
-    ).first()
-
-    if analysis:
-        analysis.result = result
-    else:
-        analysis = AnalysisResult(
-            resume_id=resume.id,
-            result=result
-        )
-        db.add(analysis)
-
+    # Always create a NEW AnalysisResult per role evaluation.
+    # Do NOT overwrite — this preserves history so the recruiter
+    # sees the correct score per role via ScoreHistory.
+    analysis = AnalysisResult(
+        resume_id=resume.id,
+        result=result
+    )
+    db.add(analysis)
     db.commit()
     db.refresh(analysis)
 
@@ -216,11 +211,14 @@ def get_learning_path(
     latest_analysis = None
     latest_role = None
 
-    # Check analyses in reverse order to get most recent with a learning path
+    # Check analyses in reverse order — get the MOST RECENT AnalysisResult per resume
     for resume in reversed(resumes):
-        analysis = db.query(AnalysisResult).filter(
-            AnalysisResult.resume_id == resume.id
-        ).first()
+        analysis = (
+            db.query(AnalysisResult)
+            .filter(AnalysisResult.resume_id == resume.id)
+            .order_by(AnalysisResult.id.desc())
+            .first()
+        )
         if analysis and analysis.result:
             lp = analysis.result.get("learning_path")
             role = analysis.result.get("target_role") or (
