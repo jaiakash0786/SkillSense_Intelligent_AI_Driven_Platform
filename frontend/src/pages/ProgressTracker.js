@@ -295,13 +295,23 @@ export default function ProgressTracker() {
                                                     const checked = !!skillProgress[key];
                                                     return (
                                                         <li key={ti} className={`topic-item${checked ? " done" : ""}`}>
-                                                            <input
-                                                                type="checkbox"
-                                                                id={`chk-${si}-${ti}`}
-                                                                checked={checked}
-                                                                onChange={() => handleToggle(item.skill, topic)}
-                                                            />
-                                                            <label htmlFor={`chk-${si}-${ti}`}>{topic}</label>
+                                                            <div className="topic-main-row">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id={`chk-${si}-${ti}`}
+                                                                    checked={checked}
+                                                                    onChange={() => handleToggle(item.skill, topic)}
+                                                                />
+                                                                <label htmlFor={`chk-${si}-${ti}`}>{topic}</label>
+                                                            </div>
+                                                            {checked && (
+                                                                <button
+                                                                    className="test-knowledge-btn"
+                                                                    onClick={() => navigate(`/mock-test?role=${encodeURIComponent(item.role || "Candidate")}&topic=${encodeURIComponent(topic)}&resume_id=${selectedResumeId}`)}
+                                                                >
+                                                                    🧪 Test Knowledge
+                                                                </button>
+                                                            )}
                                                         </li>
                                                     );
                                                 })}

@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getToken } from "../utils/auth";
 import ChatBot from "../components/ChatBot";
 import "./StudentDashboard.css";
+
+const API = "http://127.0.0.1:8000";
+
+function authHeaders() {
+  return { Authorization: `Bearer ${getToken()}` };
+}
 
 function StudentDashboard() {
   const navigate = useNavigate();
@@ -14,6 +20,10 @@ function StudentDashboard() {
   const [roles, setRoles] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
   const [selectedResumeId, setSelectedResumeId] = useState(null);
+
+  // Mock Test States
+  const [pendingTests, setPendingTests] = useState([]);
+  const [testHistory, setTestHistory] = useState([]);
 
   const fetchResumes = async () => {
     try {
@@ -39,9 +49,26 @@ function StudentDashboard() {
     }
   };
 
+  const location = useLocation();
+
+  // Re-fetch tests every time we navigate back to this page (e.g. after completing a test)
   useEffect(() => {
     fetchResumes();
-  }, []);
+    fetchMockTests();
+  }, [location.key]); // location.key changes on every navigation
+
+  const fetchMockTests = async () => {
+    try {
+      const [pendingRes, historyRes] = await Promise.all([
+        fetch(`${API}/mock-test/assigned`, { headers: authHeaders() }),
+        fetch(`${API}/mock-test/my-tests`, { headers: authHeaders() })
+      ]);
+      if (pendingRes.ok) setPendingTests(await pendingRes.json());
+      if (historyRes.ok) setTestHistory(await historyRes.json());
+    } catch {
+      // silent fail
+    }
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -195,6 +222,63 @@ function StudentDashboard() {
           ))}
         </ul>
       )}
+
+      {/* Mock Tests Section */}
+      <div className="dashboard-grid">
+        {/* Pending Tests */}
+        <div className="dashboard-card">
+          <h3>🕒 Pending Mock Tests</h3>
+          {pendingTests.length === 0 ? (
+            <p className="empty-sub">No assigned tests at the moment.</p>
+          ) : (
+            <ul className="mt-list">
+              {pendingTests.map(t => (
+                <li key={t.mock_test_id} className="mt-item pending-item">
+                  <div className="mt-info">
+                    <span className="mt-role">{t.role}</span>
+                    <span className="mt-topic">{t.skill_topic}</span>
+                  </div>
+                  <button 
+                    className="mt-btn-start"
+                    onClick={() => navigate(`/mock-test?mock_test_id=${t.mock_test_id}`)}
+                  >
+                    Start Test ▶
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Test History */}
+        <div className="dashboard-card">
+          <h3>📊 My Test History</h3>
+          {testHistory.length === 0 ? (
+            <p className="empty-sub">You haven't taken any tests yet.</p>
+          ) : (
+            <ul className="mt-list">
+              {testHistory.filter(t => t.status === "completed").map((t, idx) => (
+                <li key={`${idx}-${t.mock_test_id}`} className="mt-item">
+                  <div className="mt-info">
+                    <span className="mt-role">{t.role}</span>
+                    <span className="mt-topic">{t.skill_topic}</span>
+                    <span className="mt-date">{formatDate(t.completed_at)}</span>
+                  </div>
+                  <div className="mt-score">
+                    {t.score !== null ? (
+                      <span className={`score-badge ${t.score >= 70 ? 'good' : t.score >= 40 ? 'ok' : 'bad'}`}>
+                        {t.score}%
+                      </span>
+                    ) : (
+                      <span className="score-badge pending">Pending</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       {/* Role Selection */}
       {roles.length > 0 && (

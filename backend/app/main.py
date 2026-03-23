@@ -11,12 +11,15 @@ from backend.app.models.resume import Resume
 from backend.app.models.analysis import AnalysisResult
 from backend.app.models.score_history import ScoreHistory
 from backend.app.models.skill_progress import SkillProgress
+from backend.app.models.mock_test import MockTest
+from backend.app.models.mock_test_result import MockTestResult
 
 from backend.app.auth.routes import router as auth_router
 from backend.app.student.routes import router as student_router
 from backend.app.recruiter.routes import router as recruiter_router
 from backend.app.chatbot.routes import router as chatbot_router
 from backend.app.progress.routes import router as progress_router
+from backend.app.mock_test.routes import router as mock_test_router
 
 app = FastAPI(
     title="Mimini Backend",
@@ -39,6 +42,7 @@ app.include_router(student_router)
 app.include_router(recruiter_router)
 app.include_router(chatbot_router)
 app.include_router(progress_router)
+app.include_router(mock_test_router)
 
 def custom_openapi():
     if app.openapi_schema:

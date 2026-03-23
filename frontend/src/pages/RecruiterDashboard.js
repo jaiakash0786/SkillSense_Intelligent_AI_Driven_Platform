@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { getToken } from "../utils/auth";
 import "./RecruiterDashboard.css";
 
+const API = "http://127.0.0.1:8000";
+
 function RecruiterDashboard() {
   const [allCandidates, setAllCandidates] = useState([]);
   const [candidates, setCandidates] = useState([]);
@@ -9,9 +11,16 @@ function RecruiterDashboard() {
   const [selectedAnalysis, setSelectedAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Filters
   const [minAts, setMinAts] = useState("");
   const [roleFilter, setRoleFilter] = useState("");
   const [skillFilter, setSkillFilter] = useState("");
+
+  // Mock Test Assignment state
+  const [assignRole, setAssignRole] = useState("");
+  const [assignTopic, setAssignTopic] = useState("");
+  const [assignMsg, setAssignMsg] = useState("");
+  const [candidateTestHistory, setCandidateTestHistory] = useState([]);
 
   const loadCandidates = async () => {
     try {
@@ -78,25 +87,40 @@ function RecruiterDashboard() {
     setCandidates(allCandidates);
   };
 
-  const fetchAnalysis = async (resumeId, role) => {
+  const fetchAnalysis = async (resumeId, role, candidateEmail) => {
     setLoading(true);
     setSelectedAnalysis(null);
 
     try {
       const roleParam = role ? `?role=${encodeURIComponent(role)}` : "";
-      const response = await fetch(
-        `http://127.0.0.1:8000/recruiter/resume/${resumeId}${roleParam}`,
-        { headers: { Authorization: `Bearer ${getToken()}` } }
-      );
+      
+      // Fetch both analysis and mock test results concurrently
+      const [resAnalysis, resMockTests] = await Promise.all([
+        fetch(`${API}/recruiter/resume/${resumeId}${roleParam}`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        }),
+        fetch(`${API}/mock-test/results/by-email/${encodeURIComponent(candidateEmail)}`, {
+           headers: { Authorization: `Bearer ${getToken()}` },
+        })
+      ]);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.detail || "Failed to load analysis");
+      const dataAnalysis = await resAnalysis.json();
+      if (!resAnalysis.ok) {
+        alert(dataAnalysis.detail || "Failed to load analysis");
         return;
       }
 
-      setSelectedAnalysis(data);
+      let dataTests = [];
+      if (resMockTests.ok) {
+         const t = await resMockTests.json();
+         dataTests = t.results || [];
+      }
+
+      setSelectedAnalysis(dataAnalysis);
+      setCandidateTestHistory(dataTests);
+      setAssignRole("");
+      setAssignTopic("");
+      setAssignMsg("");
     } catch {
       alert("Server error");
     } finally {
@@ -183,7 +207,7 @@ function RecruiterDashboard() {
                 <td>{c.candidate_email}</td>
 
                 <td>
-                  <button onClick={() => fetchAnalysis(c.resume_id, c.role)}>
+                  <button onClick={() => fetchAnalysis(c.resume_id, c.role, c.candidate_email)}>
                     {c.filename}
                   </button>
                 </td>
@@ -245,10 +269,118 @@ function RecruiterDashboard() {
 
             <button className="close-btn" onClick={() => setSelectedAnalysis(null)}>✕</button>
 
-            <h3>Candidate Analysis</h3>
+            <h3>Candidate Details</h3>
 
             <p><strong>Email:</strong> {selectedAnalysis.candidate_email}</p>
             <p><strong>Resume:</strong> {selectedAnalysis.filename}</p>
+
+            {/* ── Assign Mock Test ── */}
+            <div style={{ marginTop: "24px", padding: "16px", background: "rgba(139,92,246,0.1)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.2)" }}>
+              <h4 style={{ margin: "0 0 12px 0", color: "#c4b5fd" }}>🧪 Assign Mock Test</h4>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                <input 
+                  type="text" 
+                  placeholder="Role (e.g. Frontend)" 
+                  value={assignRole} onChange={e => setAssignRole(e.target.value)} 
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                />
+                <input 
+                  type="text" 
+                  placeholder="Topic (e.g. React Hooks)" 
+                  value={assignTopic} onChange={e => setAssignTopic(e.target.value)} 
+                  style={{ flex: 1, padding: "8px 12px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                />
+                <button 
+                  onClick={async () => {
+                     setAssignMsg("Assigning...");
+                     try {
+                        const res = await fetch(`${API}/mock-test/assign`, {
+                           method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+                           body: JSON.stringify({ student_email: selectedAnalysis.candidate_email, resume_id: selectedAnalysis.resume_id, role: assignRole, skill_topic: assignTopic })
+                        });
+                        if (res.ok) {
+                           setAssignMsg("Assigned! ✅");
+                           setAssignRole(""); setAssignTopic("");
+                        } else setAssignMsg("Failed to assign");
+                     } catch { setAssignMsg("Error assigning"); }
+                  }}
+                  style={{ background: "#8b5cf6", color: "white", padding: "8px 16px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "bold" }}
+                >
+                  Assign
+                </button>
+              </div>
+              {assignMsg && <p style={{ fontSize: "13px", color: "#a78bfa", marginTop: "8px", marginBottom: 0 }}>{assignMsg}</p>}
+            </div>
+
+            {/* ── Candidate's Mock Test History (completed only) ── */}
+            {candidateTestHistory.filter(th => th.status === "completed").length > 0 && (
+              <div style={{ marginTop: "24px" }}>
+                 <h4 style={{ margin: "0 0 12px 0", color: "#f8fafc" }}>📊 Mock Test Results</h4>
+                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {candidateTestHistory.filter(th => th.status === "completed").map(th => {
+                        const viols = th.violations || [];
+                        const tabSw  = viols.filter(v => v.type === "tab_switch").length;
+                        const noFace = viols.filter(v => v.type === "no_face").length;
+                        const multFace = viols.filter(v => v.type === "multiple_faces").length;
+                        const fsEx = viols.filter(v => v.type === "fullscreen_exit").length;
+                        const copyAt = viols.filter(v => v.type === "copy_attempt").length;
+                        const totalVio = viols.length;
+                        return (
+                        <div key={th.mock_test_id} style={{ background: "rgba(255,255,255,0.03)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                              <div style={{ display: "flex", flexDirection: "column" }}>
+                                 <span style={{ color: "#e2e8f0", fontWeight: "600", fontSize: "14px" }}>{th.role}</span>
+                                 <span style={{ color: "#a78bfa", fontSize: "12px" }}>{th.skill_topic}</span>
+                                 <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>{th.is_assigned ? "Assigned" : "Voluntary"}</span>
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                                 {th.score !== null ? (
+                                    <span style={{ background: scoreBg(th.score), color: scoreColor(th.score), padding: "2px 8px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", border: `1px solid ${scoreColor(th.score)}` }}>
+                                       {th.score}% ({th.correct_answers}/{th.total_questions})
+                                    </span>
+                                 ) : (
+                                    <span style={{ color: "#94a3b8", fontSize: "12px", background: "rgba(255,255,255,0.1)", padding: "2px 8px", borderRadius: "12px" }}>Pending</span>
+                                 )}
+                              </div>
+                           </div>
+                           {/* Proctoring violation summary */}
+                           {totalVio > 0 && (
+                             <div style={{ marginTop: "8px", padding: "8px 10px", background: "rgba(239,68,68,0.08)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)" }}>
+                               <div style={{ fontSize: "11px", color: "#f87171", fontWeight: "700", marginBottom: "5px" }}>🚨 {totalVio} Violation{totalVio !== 1 ? "s" : ""}</div>
+                               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                                 {tabSw > 0    && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>🔀 Tab: {tabSw}</span>}
+                                 {noFace > 0   && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>👤 No Face: {noFace}×</span>}
+                                 {multFace > 0 && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>👥 Multi: {multFace}×</span>}
+                                 {fsEx > 0     && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>🖥️ FS exit: {fsEx}</span>}
+                                 {copyAt > 0   && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>📋 Copy: {copyAt}</span>}
+                               </div>
+                             </div>
+                           )}
+                           {th.score !== null && totalVio === 0 && (
+                             <div style={{ marginTop: "6px", fontSize: "11px", color: "#34d399", fontWeight: "600" }}>✅ No violations detected</div>
+                           )}
+                           {/* Coding answers review */}
+                           {th.coding_results && th.coding_results.length > 0 && (
+                             <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(139,92,246,0.08)", borderRadius: "8px", border: "1px solid rgba(139,92,246,0.2)" }}>
+                               <div style={{ fontSize: "11px", color: "#a78bfa", fontWeight: "700", marginBottom: "8px" }}>💻 Coding Answers</div>
+                               {th.coding_results.map((cr, ci) => (
+                                 <div key={ci} style={{ marginBottom: "10px", paddingBottom: "10px", borderBottom: ci < th.coding_results.length-1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                                   <div style={{ fontSize: "12px", color: "#e2e8f0", fontWeight: "600", marginBottom: "4px" }}>{cr.question}</div>
+                                   <pre style={{ background: "rgba(0,0,0,0.4)", borderRadius: "6px", padding: "8px", fontSize: "11px", color: "#cbd5e1", whiteSpace: "pre-wrap", margin: "4px 0", fontFamily: "monospace" }}>{cr.answer_text || "(No answer)"}</pre>
+                                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                     <span style={{ background: cr.ai_score >= 7 ? "rgba(52,211,153,0.15)" : cr.ai_score >= 4 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)", color: cr.ai_score >= 7 ? "#34d399" : cr.ai_score >= 4 ? "#fbbf24" : "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "700" }}>AI Score: {cr.ai_score}/10</span>
+                                     <span style={{ fontSize: "11px", color: "#94a3b8", fontStyle: "italic" }}>{cr.ai_feedback}</span>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           )}
+                        </div>
+                        );
+                     })}
+                 </div>
+              </div>
+            )}
 
             {/* Per-role Evaluation History */}
             {(selectedAnalysis.role_history?.length > 0) && (
