@@ -7,6 +7,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import RecruiterDashboard from "./pages/RecruiterDashboard";
 import ProgressTracker from "./pages/ProgressTracker";
 import LearningPath from "./pages/LearningPath";
+import MockTest from "./pages/MockTest";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
@@ -74,6 +75,16 @@ function App() {
           element={
             <ProtectedRoute requiredRole="student">
               <LearningPath />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Protected Mock Test */}
+        <Route
+          path="/mock-test"
+          element={
+            <ProtectedRoute requiredRole="student">
+              <MockTest />
             </ProtectedRoute>
           }
         />

@@ -353,6 +353,33 @@
     line-height: 1.4;
 }
 
+/* ── Container for checkbox and label to stay horizontal */
+.topic-main-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+/* ── Test Knowledge CTA Button */
+.test-knowledge-btn {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    color: #c4b5fd;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.test-knowledge-btn:hover {
+    background: rgba(139, 92, 246, 0.3);
+    color: #f1f5f9;
+    transform: translateY(-1px);
+}
+
 /* ─── Activity timeline ───────────────────────────────────────────────────── */
 .timeline-list {
     list-style: none;
