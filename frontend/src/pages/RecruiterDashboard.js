@@ -22,6 +22,13 @@ function RecruiterDashboard() {
   const [assignMsg, setAssignMsg] = useState("");
   const [candidateTestHistory, setCandidateTestHistory] = useState([]);
 
+  // AI Review state
+  const [aiReview, setAiReview] = useState(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Mock test tab
+  const [testTab, setTestTab] = useState("assigned");
+
   const loadCandidates = async () => {
     try {
       setLoading(true);
@@ -121,10 +128,43 @@ function RecruiterDashboard() {
       setAssignRole("");
       setAssignTopic("");
       setAssignMsg("");
+      setAiReview(null);          // reset review on new candidate open
+      setReviewLoading(false);
+      setTestTab("assigned");      // default to assigned tab
     } catch {
       alert("Server error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateReview = async () => {
+    if (!selectedAnalysis) return;
+    setReviewLoading(true);
+    setAiReview(null);
+    try {
+      const res = await fetch(`${API}/recruiter/candidate-review`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          resume_id: selectedAnalysis.resume_id,
+          candidate_email: selectedAnalysis.candidate_email,
+          role: selectedAnalysis.role_history?.[0]?.role || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || "Failed to generate review");
+        return;
+      }
+      setAiReview(data);
+    } catch {
+      alert("Server error while generating review");
+    } finally {
+      setReviewLoading(false);
     }
   };
 
@@ -274,6 +314,55 @@ function RecruiterDashboard() {
             <p><strong>Email:</strong> {selectedAnalysis.candidate_email}</p>
             <p><strong>Resume:</strong> {selectedAnalysis.filename}</p>
 
+            {/* ── AI Review Section (TOP) ── */}
+            <div style={{ marginBottom: "20px" }}>
+              <button
+                className="ai-review-btn"
+                onClick={generateReview}
+                disabled={reviewLoading}
+                id="generate-ai-review-btn"
+              >
+                {reviewLoading ? (
+                  <>
+                    <span style={{ display: "inline-block", width: "16px", height: "16px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                    Generating Review...
+                  </>
+                ) : (
+                  <>✨ Generate AI Performance Review</>
+                )}
+              </button>
+
+              {reviewLoading && <div className="review-shimmer" />}
+
+              {aiReview && !reviewLoading && (
+                <div className="ai-review-card" id="ai-review-card">
+                  <div className="review-card-inner">
+                    <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "1.5px", color: "#a78bfa", textTransform: "uppercase", marginBottom: "10px" }}>
+                      🤖 AI Performance Review
+                    </div>
+                    <h3 className="review-headline">🌟 {aiReview.headline}</h3>
+                    <p className="review-summary">{aiReview.summary}</p>
+                    {aiReview.highlights?.length > 0 && (
+                      <>
+                        <div className="review-highlights-label">✦ Key Highlights</div>
+                        <div className="review-highlights">
+                          {aiReview.highlights.map((h, idx) => (
+                            <span key={idx} className="review-highlight-chip">⚡ {h}</span>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {aiReview.recommendation && (
+                      <div className="review-recommendation">
+                        <span className="review-recommendation-icon">🏆</span>
+                        <span className="review-recommendation-text">{aiReview.recommendation}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* ── Assign Mock Test ── */}
             <div style={{ marginTop: "24px", padding: "16px", background: "rgba(139,92,246,0.1)", borderRadius: "12px", border: "1px solid rgba(139,92,246,0.2)" }}>
               <h4 style={{ margin: "0 0 12px 0", color: "#c4b5fd" }}>🧪 Assign Mock Test</h4>
@@ -312,104 +401,36 @@ function RecruiterDashboard() {
               {assignMsg && <p style={{ fontSize: "13px", color: "#a78bfa", marginTop: "8px", marginBottom: 0 }}>{assignMsg}</p>}
             </div>
 
-            {/* ── Candidate's Mock Test History (completed only) ── */}
-            {candidateTestHistory.filter(th => th.status === "completed").length > 0 && (
-              <div style={{ marginTop: "24px" }}>
-                 <h4 style={{ margin: "0 0 12px 0", color: "#f8fafc" }}>📊 Mock Test Results</h4>
-                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                    {candidateTestHistory.filter(th => th.status === "completed").map(th => {
-                        const viols = th.violations || [];
-                        const tabSw  = viols.filter(v => v.type === "tab_switch").length;
-                        const noFace = viols.filter(v => v.type === "no_face").length;
-                        const multFace = viols.filter(v => v.type === "multiple_faces").length;
-                        const fsEx = viols.filter(v => v.type === "fullscreen_exit").length;
-                        const copyAt = viols.filter(v => v.type === "copy_attempt").length;
-                        const totalVio = viols.length;
-                        return (
-                        <div key={th.mock_test_id} style={{ background: "rgba(255,255,255,0.03)", padding: "12px 14px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                              <div style={{ display: "flex", flexDirection: "column" }}>
-                                 <span style={{ color: "#e2e8f0", fontWeight: "600", fontSize: "14px" }}>{th.role}</span>
-                                 <span style={{ color: "#a78bfa", fontSize: "12px" }}>{th.skill_topic}</span>
-                                 <span style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>{th.is_assigned ? "Assigned" : "Voluntary"}</span>
-                              </div>
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
-                                 {th.score !== null ? (
-                                    <span style={{ background: scoreBg(th.score), color: scoreColor(th.score), padding: "2px 8px", borderRadius: "12px", fontSize: "13px", fontWeight: "bold", border: `1px solid ${scoreColor(th.score)}` }}>
-                                       {th.score}% ({th.correct_answers}/{th.total_questions})
-                                    </span>
-                                 ) : (
-                                    <span style={{ color: "#94a3b8", fontSize: "12px", background: "rgba(255,255,255,0.1)", padding: "2px 8px", borderRadius: "12px" }}>Pending</span>
-                                 )}
-                              </div>
-                           </div>
-                           {/* Proctoring violation summary */}
-                           {totalVio > 0 && (
-                             <div style={{ marginTop: "8px", padding: "8px 10px", background: "rgba(239,68,68,0.08)", borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)" }}>
-                               <div style={{ fontSize: "11px", color: "#f87171", fontWeight: "700", marginBottom: "5px" }}>🚨 {totalVio} Violation{totalVio !== 1 ? "s" : ""}</div>
-                               <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                                 {tabSw > 0    && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>🔀 Tab: {tabSw}</span>}
-                                 {noFace > 0   && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>👤 No Face: {noFace}×</span>}
-                                 {multFace > 0 && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>👥 Multi: {multFace}×</span>}
-                                 {fsEx > 0     && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>🖥️ FS exit: {fsEx}</span>}
-                                 {copyAt > 0   && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "600" }}>📋 Copy: {copyAt}</span>}
-                               </div>
-                             </div>
-                           )}
-                           {th.score !== null && totalVio === 0 && (
-                             <div style={{ marginTop: "6px", fontSize: "11px", color: "#34d399", fontWeight: "600" }}>✅ No violations detected</div>
-                           )}
-                           {/* Coding answers review */}
-                           {th.coding_results && th.coding_results.length > 0 && (
-                             <div style={{ marginTop: "10px", padding: "10px 12px", background: "rgba(139,92,246,0.08)", borderRadius: "8px", border: "1px solid rgba(139,92,246,0.2)" }}>
-                               <div style={{ fontSize: "11px", color: "#a78bfa", fontWeight: "700", marginBottom: "8px" }}>💻 Coding Answers</div>
-                               {th.coding_results.map((cr, ci) => (
-                                 <div key={ci} style={{ marginBottom: "10px", paddingBottom: "10px", borderBottom: ci < th.coding_results.length-1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                                   <div style={{ fontSize: "12px", color: "#e2e8f0", fontWeight: "600", marginBottom: "4px" }}>{cr.question}</div>
-                                   <pre style={{ background: "rgba(0,0,0,0.4)", borderRadius: "6px", padding: "8px", fontSize: "11px", color: "#cbd5e1", whiteSpace: "pre-wrap", margin: "4px 0", fontFamily: "monospace" }}>{cr.answer_text || "(No answer)"}</pre>
-                                   <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                                     <span style={{ background: cr.ai_score >= 7 ? "rgba(52,211,153,0.15)" : cr.ai_score >= 4 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)", color: cr.ai_score >= 7 ? "#34d399" : cr.ai_score >= 4 ? "#fbbf24" : "#f87171", padding: "2px 8px", borderRadius: "10px", fontSize: "11px", fontWeight: "700" }}>AI Score: {cr.ai_score}/10</span>
-                                     <span style={{ fontSize: "11px", color: "#94a3b8", fontStyle: "italic" }}>{cr.ai_feedback}</span>
-                                   </div>
-                                 </div>
-                               ))}
-                             </div>
-                           )}
-                        </div>
-                        );
-                     })}
-                 </div>
+            {/* ④ Skills Breakdown */}
+            <div style={{ marginTop: "20px" }}>
+              <h4 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "15px", fontWeight: "700" }}>🎯 Suggested Roles</h4>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "16px" }}>
+                {(selectedAnalysis.analysis?.roles || []).map((r, idx) => (
+                  <span key={idx} style={{ padding: "4px 12px", borderRadius: "20px", background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)", color: "#c4b5fd", fontSize: "13px" }}>
+                    {r.role} <span style={{ opacity: 0.7 }}>({Math.round((r.confidence || 0) * 100)}%)</span>
+                  </span>
+                ))}
               </div>
-            )}
 
-            {/* Per-role Evaluation History */}
+              <h4 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "15px", fontWeight: "700" }}>✅ Matched Skills</h4>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                {(selectedAnalysis.analysis?.ats?.matched_skills || []).map((s, idx) => (
+                  <span key={idx} style={{ padding: "3px 10px", borderRadius: "16px", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", fontSize: "12px" }}>
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* ⑤ Role Evaluation History */}
             {(selectedAnalysis.role_history?.length > 0) && (
-              <>
-                <h4>📊 Role Evaluation History</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+              <div style={{ marginTop: "20px" }}>
+                <h4 style={{ margin: "0 0 10px 0", color: "#f8fafc", fontSize: "15px", fontWeight: "700" }}>📊 Role Evaluation History</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {selectedAnalysis.role_history.map((entry, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        background: "rgba(255,255,255,0.04)",
-                        borderRadius: "8px",
-                        padding: "10px 14px",
-                        border: "1px solid rgba(255,255,255,0.06)",
-                      }}
-                    >
+                    <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.04)", borderRadius: "8px", padding: "10px 14px", border: "1px solid rgba(255,255,255,0.06)" }}>
                       <span style={{ color: "#93c5fd", fontWeight: 600 }}>{entry.role}</span>
-                      <span style={{
-                        color: scoreColor(entry.ats_score),
-                        fontWeight: 700,
-                        background: scoreBg(entry.ats_score),
-                        padding: "3px 10px",
-                        borderRadius: "14px",
-                        fontSize: "13px",
-                        border: `1px solid ${scoreColor(entry.ats_score)}44`,
-                      }}>
+                      <span style={{ color: scoreColor(entry.ats_score), fontWeight: 700, background: scoreBg(entry.ats_score), padding: "3px 10px", borderRadius: "14px", fontSize: "13px", border: `1px solid ${scoreColor(entry.ats_score)}44` }}>
                         {entry.ats_score != null ? entry.ats_score : "N/A"}
                       </span>
                       <span style={{ color: "#475569", fontSize: "12px" }}>
@@ -418,34 +439,135 @@ function RecruiterDashboard() {
                     </div>
                   ))}
                 </div>
-              </>
+              </div>
             )}
 
-            {/* Suggested Roles from Analysis */}
-            <h4>🎯 Suggested Roles</h4>
-            <ul>
-              {selectedAnalysis.analysis?.roles?.map((r, idx) => (
-                <li key={idx}>{r.role} ({Math.round((r.confidence || 0) * 100)}%)</li>
-              ))}
-            </ul>
+            {/* ⑥ Mock Test Results — Tab UI (LAST) */}
+            {candidateTestHistory.length > 0 && (() => {
+              const completed = candidateTestHistory.filter(th => th.status === "completed");
+              const assigned  = completed.filter(th => th.is_assigned);
+              const voluntary = completed.filter(th => !th.is_assigned);
+              const pending   = candidateTestHistory.filter(th => th.status !== "completed" && th.is_assigned);
 
-            <h4>✅ Matched Skills</h4>
-            <ul>
-              {(selectedAnalysis.analysis?.ats?.matched_skills || []).map((s, idx) => (
-                <li key={idx}>{s}</li>
-              ))}
-            </ul>
+              const activeTests =
+                testTab === "assigned"  ? assigned  :
+                testTab === "voluntary" ? voluntary :
+                pending;
 
-            <h4>❌ Missing Skills</h4>
-            <ul>
-              {(selectedAnalysis.analysis?.ats?.missing_skills || []).map((s, idx) => (
-                <li key={idx}>{s}</li>
-              ))}
-            </ul>
+              const renderTestCard = (th, idx) => {
+                const viols    = th.violations || [];
+                const tabSw    = viols.filter(v => v.type === "tab_switch").length;
+                const noFace   = viols.filter(v => v.type === "no_face").length;
+                const multFace = viols.filter(v => v.type === "multiple_faces").length;
+                const fsEx     = viols.filter(v => v.type === "fullscreen_exit").length;
+                const copyAt   = viols.filter(v => v.type === "copy_attempt").length;
+                const totalVio = viols.length;
+                return (
+                  <div key={`${th.mock_test_id}-${idx}`} style={{ background: "rgba(255,255,255,0.04)", borderRadius: "14px", border: "1px solid rgba(255,255,255,0.08)", padding: "20px 22px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "14px" }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "5px" }}>
+                          <span style={{ color: "#f1f5f9", fontWeight: "700", fontSize: "16px" }}>{th.role}</span>
+                          <span style={{ fontSize: "11px", fontWeight: "700", padding: "2px 9px", borderRadius: "10px", background: th.is_assigned ? "rgba(99,102,241,0.2)" : "rgba(34,197,94,0.15)", color: th.is_assigned ? "#a5b4fc" : "#4ade80", border: `1px solid ${th.is_assigned ? "rgba(99,102,241,0.35)" : "rgba(34,197,94,0.3)"}` }}>
+                            {th.is_assigned ? "📋 Assigned" : "🙋 Voluntary"}
+                          </span>
+                        </div>
+                        <div style={{ color: "#a78bfa", fontSize: "13px", marginBottom: "3px" }}>📚 {th.skill_topic}</div>
+                        {th.completed_at && (
+                          <div style={{ color: "#475569", fontSize: "11px" }}>
+                            🗓 {new Date(th.completed_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flexShrink: 0, textAlign: "center" }}>
+                        {th.score !== null ? (
+                          <div style={{ background: scoreBg(th.score), color: scoreColor(th.score), border: `1px solid ${scoreColor(th.score)}`, borderRadius: "10px", padding: "6px 14px", minWidth: "80px", textAlign: "center" }}>
+                            <div style={{ fontSize: "18px", fontWeight: "700", lineHeight: 1 }}>{th.score}%</div>
+                            <div style={{ fontSize: "11px", marginTop: "2px", opacity: 0.8 }}>{th.correct_answers}/{th.total_questions} correct</div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#94a3b8", fontSize: "13px", background: "rgba(255,255,255,0.08)", padding: "8px 16px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)" }}>⏳ Pending</span>
+                        )}
+                      </div>
+                    </div>
+                    {totalVio > 0 ? (
+                      <div style={{ marginTop: "14px", padding: "12px 14px", background: "rgba(239,68,68,0.07)", borderRadius: "10px", border: "1px solid rgba(239,68,68,0.2)" }}>
+                        <div style={{ fontSize: "13px", color: "#f87171", fontWeight: "700", marginBottom: "8px" }}>🚨 {totalVio} Proctoring Violation{totalVio !== 1 ? "s" : ""}</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "7px" }}>
+                          {tabSw > 0    && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "600" }}>🔀 Tab Switch: {tabSw}</span>}
+                          {noFace > 0   && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "600" }}>👤 No Face: {noFace}×</span>}
+                          {multFace > 0 && <span style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "600" }}>👥 Multiple Faces: {multFace}×</span>}
+                          {fsEx > 0     && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "600" }}>🖥️ Fullscreen Exit: {fsEx}</span>}
+                          {copyAt > 0   && <span style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "600" }}>📋 Copy Attempt: {copyAt}</span>}
+                        </div>
+                      </div>
+                    ) : th.score !== null ? (
+                      <div style={{ marginTop: "10px", fontSize: "13px", color: "#34d399", fontWeight: "600" }}>✅ Clean session — no violations</div>
+                    ) : null}
+                    {th.coding_results && th.coding_results.length > 0 && (
+                      <div style={{ marginTop: "14px", padding: "14px 16px", background: "rgba(139,92,246,0.07)", borderRadius: "10px", border: "1px solid rgba(139,92,246,0.18)" }}>
+                        <div style={{ fontSize: "13px", color: "#a78bfa", fontWeight: "700", marginBottom: "12px" }}>💻 Coding Answers ({th.coding_results.length})</div>
+                        {th.coding_results.map((cr, ci) => (
+                          <div key={ci} style={{ marginBottom: ci < th.coding_results.length - 1 ? "16px" : 0, paddingBottom: ci < th.coding_results.length - 1 ? "16px" : 0, borderBottom: ci < th.coding_results.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                            <div style={{ fontSize: "13px", color: "#e2e8f0", fontWeight: "600", marginBottom: "8px" }}>{cr.question}</div>
+                            <pre style={{ background: "rgba(0,0,0,0.35)", borderRadius: "8px", padding: "12px 14px", fontSize: "12px", color: "#cbd5e1", whiteSpace: "pre-wrap", margin: "0 0 10px 0", fontFamily: "monospace", lineHeight: 1.65 }}>{cr.answer_text || "(No answer)"}</pre>
+                            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                              <span style={{ background: cr.ai_score >= 7 ? "rgba(52,211,153,0.15)" : cr.ai_score >= 4 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)", color: cr.ai_score >= 7 ? "#34d399" : cr.ai_score >= 4 ? "#fbbf24" : "#f87171", padding: "4px 12px", borderRadius: "10px", fontSize: "12px", fontWeight: "700" }}>
+                                AI Score: {cr.ai_score}/10
+                              </span>
+                              <span style={{ fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>{cr.ai_feedback}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              const tabDef = [
+                { key: "assigned",  label: "📋 Assigned",  count: assigned.length,  color: "#a5b4fc", active: "rgba(99,102,241,0.25)",  border: "rgba(99,102,241,0.5)" },
+                { key: "voluntary", label: "🙋 Voluntary", count: voluntary.length, color: "#4ade80", active: "rgba(34,197,94,0.2)",   border: "rgba(34,197,94,0.5)" },
+                ...(pending.length > 0 ? [{ key: "pending", label: "⏳ Pending", count: pending.length, color: "#94a3b8", active: "rgba(100,116,139,0.2)", border: "rgba(100,116,139,0.5)" }] : []),
+              ];
+
+              return (
+                <div style={{ marginTop: "28px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+                    <h4 style={{ margin: 0, color: "#f8fafc", fontSize: "18px", fontWeight: "700" }}>📊 Mock Test Results</h4>
+                    <span style={{ fontSize: "12px", color: "#64748b" }}>{completed.length} completed · {pending.length} awaiting</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+                    {tabDef.map(tab => (
+                      <button key={tab.key} onClick={() => setTestTab(tab.key)} style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: testTab === tab.key ? `2px solid ${tab.border}` : "2px solid rgba(255,255,255,0.08)", background: testTab === tab.key ? tab.active : "rgba(255,255,255,0.04)", color: testTab === tab.key ? tab.color : "#64748b", fontWeight: testTab === tab.key ? "700" : "500", fontSize: "14px", cursor: "pointer", transition: "all 0.2s ease", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                        {tab.label}
+                        <span style={{ fontSize: "12px", fontWeight: "700", padding: "1px 8px", borderRadius: "20px", background: testTab === tab.key ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.06)" }}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ maxHeight: "420px", overflowY: "auto", paddingRight: "4px", scrollbarWidth: "thin", scrollbarColor: "rgba(139,92,246,0.4) transparent" }}>
+                    {activeTests.length > 0 ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        {activeTests.map((th, idx) => renderTestCard(th, idx))}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "30px 0", color: "#475569", fontSize: "14px" }}>
+                        No {testTab} tests found.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
           </div>
         </div>
       )}
+
+      {/* Spin keyframe */}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
     </div>
   );

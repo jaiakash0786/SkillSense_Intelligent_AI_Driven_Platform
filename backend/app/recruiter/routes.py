@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Optional
+from pydantic import BaseModel
+import os, json, requests
 
 from backend.app.auth.dependencies import get_current_user
 from backend.app.db.database import SessionLocal
@@ -8,11 +10,20 @@ from backend.app.models.user import User
 from backend.app.models.resume import Resume
 from backend.app.models.analysis import AnalysisResult
 from backend.app.models.score_history import ScoreHistory
+from backend.app.models.mock_test_result import MockTestResult
+from backend.app.models.mock_test import MockTest
 
 router = APIRouter(
     prefix="/recruiter",
     tags=["recruiter"]
 )
+
+
+# ── Request schema for AI Review ──────────────────────────────────────────────
+class ReviewRequest(BaseModel):
+    resume_id: int
+    candidate_email: str
+    role: Optional[str] = None
 
 
 def get_db():
@@ -203,4 +214,155 @@ def get_candidate_analysis(
         "analysis": analysis.result,
         "role_history": role_history,           # All per-role ATS scores
         "role_ats_score": role_ats_score,       # Score for the requested role (if any)
+    }
+
+
+# ── AI Candidate Review ───────────────────────────────────────────────────────
+@router.post("/candidate-review")
+def generate_candidate_review(
+    payload: ReviewRequest,
+    current_user: dict = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Generates a positive AI performance review for a candidate using Groq LLM.
+    Uses the dedicated REVIEW_GROQ_API_KEY (NEW_KEY).
+    Returns: { headline, summary, highlights[], recommendation }
+    """
+    groq_key = os.getenv("NEW_KEY")
+    if not groq_key:
+        raise HTTPException(status_code=500, detail="Review API key not configured")
+
+    # ── 1. Fetch resume
+    resume = db.query(Resume).filter(Resume.id == payload.resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    # ── 2. Fetch analysis (skills)
+    analysis = (
+        db.query(AnalysisResult)
+        .filter(AnalysisResult.resume_id == payload.resume_id)
+        .first()
+    )
+    matched_skills = []
+    suggested_roles = []
+    if analysis and analysis.result:
+        matched_skills = analysis.result.get("ats", {}).get("matched_skills", []) or []
+        role_data = analysis.result.get("roles", []) or []
+        suggested_roles = [r.get("role", "") for r in role_data if r.get("role")]
+
+    # ── 3. Fetch best ATS score for requested role or overall best
+    score_entries = (
+        db.query(ScoreHistory)
+        .filter(ScoreHistory.resume_id == payload.resume_id)
+        .order_by(ScoreHistory.ats_score.desc())
+        .all()
+    )
+    best_score = None
+    best_role_name = payload.role or ""
+    for s in score_entries:
+        if payload.role and s.role.lower() == payload.role.lower():
+            best_score = s.ats_score
+            best_role_name = s.role
+            break
+    if best_score is None and score_entries:
+        best_score = score_entries[0].ats_score
+        best_role_name = score_entries[0].role
+
+    # ── 4. Fetch mock test results for this candidate
+    user = db.query(User).filter(User.email == payload.candidate_email).first()
+    mock_results_summary = []
+    if user:
+        results = (
+            db.query(MockTestResult, MockTest)
+            .join(MockTest, MockTestResult.mock_test_id == MockTest.id)
+            .filter(
+                MockTest.student_id == user.id,
+                MockTest.status == "completed"
+            )
+            .order_by(MockTestResult.submitted_at.desc())
+            .limit(3)
+            .all()
+        )
+        for result, test in results:
+            mock_results_summary.append(
+                f"  - [{test.role} / {test.skill_topic}]: {result.score}% "
+                f"({result.correct_answers}/{result.total_questions} correct)"
+            )
+
+    # ── 5. Build prompt
+    skills_str = ", ".join(matched_skills) if matched_skills else "various technical skills"
+    roles_str  = ", ".join(suggested_roles[:3]) if suggested_roles else (best_role_name or "Software Engineering")
+    ats_str    = f"{best_score}/100" if best_score is not None else "high"
+    tests_str  = "\n".join(mock_results_summary) if mock_results_summary else "  - No mock tests taken yet"
+
+    prompt = f"""You are an expert technical recruiter writing a glowing professional review for a candidate.
+Generate a structured review JSON with EXACTLY this format (no extra text, only valid JSON):
+
+{{
+  "headline": "<3-8 word impressive professional title for the candidate>",
+  "summary": "<2-3 sentence positive narrative about the candidate's strengths and potential>",
+  "highlights": [
+    "<highlight 1 about skills or expertise>",
+    "<highlight 2 about ATS/technical match>",
+    "<highlight 3 about performance or test results>",
+    "<highlight 4 — optional additional strength>",
+    "<highlight 5 — optional additional strength>"
+  ],
+  "recommendation": "<1 confident, enthusiastic sentence recommending this candidate for hiring>"
+}}
+
+Candidate data:
+- Email: {payload.candidate_email}
+- Target Role: {best_role_name or roles_str}
+- ATS Score: {ats_str}
+- Matched Skills: {skills_str}
+- Suggested Roles: {roles_str}
+- Mock Test Performance:
+{tests_str}
+
+Rules:
+- Be genuinely positive and professional (this is shown to recruiters, NOT candidates)
+- Highlight real strengths from the data above
+- Keep highlights to 3-5 items (remove the optional ones if not needed)
+- Output ONLY valid JSON, no markdown, no code blocks
+"""
+
+    # ── 6. Call Groq API
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {groq_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 600
+            },
+            timeout=30
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Groq API error: {str(e)}")
+
+    # ── 7. Parse response
+    try:
+        content = response.json()["choices"][0]["message"]["content"].strip()
+        # Strip any accidental markdown wrappers
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        review = json.loads(content)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to parse AI review response")
+
+    return {
+        "candidate_email": payload.candidate_email,
+        "role": best_role_name,
+        "ats_score": best_score,
+        **review
     }
