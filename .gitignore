@@ -13,7 +13,7 @@ frontend/node_modules
 
 # production
 /build
-
+*.db
 # misc
 .DS_Store
 .env.local
