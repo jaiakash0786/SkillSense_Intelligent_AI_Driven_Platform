@@ -6,6 +6,18 @@ from role_detector import detect_roles
 from ats_evaluator import evaluate_ats
 from learning_path_generator import generate_learning_path
 
+# ── Singleton RAG engine ──────────────────────────────────────────────────────
+# Loaded ONCE when the module is first imported (at server startup).
+# Avoids reloading the 103-layer BERT model on every pipeline call.
+_rag_engine: MetadataRAGEngine | None = None
+
+
+def _get_rag() -> MetadataRAGEngine:
+    global _rag_engine
+    if _rag_engine is None:
+        _rag_engine = MetadataRAGEngine()
+    return _rag_engine
+
 
 def infer_domain(role_name: str) -> str:
     role = role_name.lower()
@@ -25,7 +37,7 @@ def infer_domain(role_name: str) -> str:
 
 
 def run_pipeline(resume_path: str, target_role: str | None = None):
-    rag = MetadataRAGEngine()
+    rag = _get_rag()  # ← Reuse singleton, no reload
 
     resume_text = read_resume(resume_path)
     parsed_resume = parse_resume_with_llm(resume_text)

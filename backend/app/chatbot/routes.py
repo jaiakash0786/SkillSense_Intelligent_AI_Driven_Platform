@@ -121,7 +121,7 @@ def chat(
             if resume:
                 analysis = db.query(AnalysisResult).filter(
                     AnalysisResult.resume_id == resume.id
-                ).first()
+                ).order_by(AnalysisResult.id.desc()).first()
                 if analysis:
                     analysis_data = analysis.result
     else:
@@ -135,7 +135,7 @@ def chat(
             if latest_resume:
                 analysis = db.query(AnalysisResult).filter(
                     AnalysisResult.resume_id == latest_resume.id
-                ).first()
+                ).order_by(AnalysisResult.id.desc()).first()
                 if analysis:
                     analysis_data = analysis.result
 

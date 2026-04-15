@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getToken } from "../utils/auth";
 import ChatBot from "../components/ChatBot";
@@ -6,35 +6,63 @@ import "./StudentDashboard.css";
 
 const API = "http://127.0.0.1:8000";
 
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const NAV_TABS = [
+  { id: "overview", label: "Overview", icon: "📋" },
+  { id: "resumes", label: "Resumes", icon: "📄" },
+  { id: "tests", label: "Tests", icon: "🧪" },
+  { id: "evaluation", label: "Evaluation", icon: "🎯" },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 function authHeaders() {
   return { Authorization: `Bearer ${getToken()}` };
 }
 
+function formatDate(dateString) {
+  if (!dateString) return "Unknown";
+  return new Date(dateString).toLocaleString("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+
 function StudentDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // ── State Management ──────────────────────────────────────────────────────
+
+  // Resume data
   const [resumes, setResumes] = useState([]);
-  const [error, setError] = useState("");
+  const [selectedResumeId, setSelectedResumeId] = useState(null);
   const [file, setFile] = useState(null);
   const [uploadMessage, setUploadMessage] = useState("");
 
+  // Analysis & Evaluation
   const [roles, setRoles] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
-  const [selectedResumeId, setSelectedResumeId] = useState(null);
 
-  // Mock Test States
+  // Mock Tests
   const [pendingTests, setPendingTests] = useState([]);
   const [testHistory, setTestHistory] = useState([]);
 
-  const fetchResumes = async () => {
+  // UI State
+  const [activeTab, setActiveTab] = useState("overview");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // ── Data Fetching ─────────────────────────────────────────────────────────
+
+  const fetchResumes = useCallback(async () => {
     try {
-      const response = await fetch(
-        "http://127.0.0.1:8000/student/resumes",
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
+      const response = await fetch(`${API}/student/resumes`, {
+        headers: authHeaders(),
+      });
 
       const data = await response.json();
 
@@ -44,31 +72,41 @@ function StudentDashboard() {
       }
 
       setResumes(data);
-    } catch {
-      setError("Server error");
+      setError("");
+    } catch (err) {
+      console.error("Failed to fetch resumes:", err);
+      setError("Server error loading resumes");
     }
-  };
+  }, []);
 
-  const location = useLocation();
-
-  // Re-fetch tests every time we navigate back to this page (e.g. after completing a test)
-  useEffect(() => {
-    fetchResumes();
-    fetchMockTests();
-  }, [location.key]); // location.key changes on every navigation
-
-  const fetchMockTests = async () => {
+  const fetchMockTests = useCallback(async () => {
     try {
       const [pendingRes, historyRes] = await Promise.all([
         fetch(`${API}/mock-test/assigned`, { headers: authHeaders() }),
-        fetch(`${API}/mock-test/my-tests`, { headers: authHeaders() })
+        fetch(`${API}/mock-test/my-tests`, { headers: authHeaders() }),
       ]);
-      if (pendingRes.ok) setPendingTests(await pendingRes.json());
-      if (historyRes.ok) setTestHistory(await historyRes.json());
-    } catch {
-      // silent fail
+
+      if (pendingRes.ok) {
+        const pending = await pendingRes.json();
+        setPendingTests(Array.isArray(pending) ? pending : []);
+      }
+
+      if (historyRes.ok) {
+        const history = await historyRes.json();
+        setTestHistory(Array.isArray(history) ? history : []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch mock tests:", err);
     }
-  };
+  }, []);
+
+  // Initial fetch + refetch on navigation
+  useEffect(() => {
+    fetchResumes();
+    fetchMockTests();
+  }, [location.key, fetchResumes, fetchMockTests]);
+
+  // ── Resume Upload ─────────────────────────────────────────────────────────
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -82,18 +120,14 @@ function StudentDashboard() {
     formData.append("resume", file);
 
     try {
-      setUploadMessage("Uploading... ");
+      setLoading(true);
+      setUploadMessage("Uploading...");
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/student/resume/upload",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          },
-          body: formData
-        }
-      );
+      const response = await fetch(`${API}/student/resume/upload`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      });
 
       const data = await response.json();
 
@@ -104,324 +138,540 @@ function StudentDashboard() {
 
       setUploadMessage("Resume uploaded successfully ✅");
       setFile(null);
-      fetchResumes();
-
-    } catch {
+      await fetchResumes();
+      setActiveTab("resumes");
+    } catch (err) {
+      console.error("Upload error:", err);
       setUploadMessage("Server error during upload");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ── Resume Analysis ──────────────────────────────────────────────────────
+
   const fetchAnalysis = async (resumeId) => {
     setSelectedResumeId(resumeId);
+    setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://127.0.0.1:8000/student/resume/${resumeId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
-        }
-      );
+      const response = await fetch(`${API}/student/resume/${resumeId}`, {
+        headers: authHeaders(),
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.detail || "Failed to load analysis");
+        setError(data.detail || "Failed to load analysis");
         return;
       }
 
-
       setRoles(data.analysis?.roles || []);
       setEvaluation(null);
-
-
-    } catch {
-      alert("Server error");
+      setError("");
+      setActiveTab("evaluation");
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setError("Server error loading analysis");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleRoleSelection = async (role) => {
+  // ── Role Evaluation ──────────────────────────────────────────────────────
 
+  const handleRoleSelection = async (role) => {
+    setLoading(true);
 
     try {
       const response = await fetch(
-        `http://127.0.0.1:8000/student/resume/${selectedResumeId}/evaluate`,
+        `${API}/student/resume/${selectedResumeId}/evaluate`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${getToken()}`
+            ...authHeaders(),
           },
-          body: JSON.stringify({ target_role: role })
+          body: JSON.stringify({ target_role: role }),
         }
       );
 
       const data = await response.json();
 
       if (!response.ok) {
-        alert("Failed to evaluate resume for selected role");
+        setError("Failed to evaluate resume for selected role");
         return;
       }
 
       setEvaluation(data);
-
-    } catch {
-      alert("Server error");
+      setError("");
+    } catch (err) {
+      console.error("Evaluation error:", err);
+      setError("Server error during evaluation");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "Unknown";
+  // ── Render: Overview Tab ─────────────────────────────────────────────────
 
-    return new Date(dateString).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "medium",
-    });
-  };
+  const renderOverview = () => (
+    <section className="dash-card overview-card">
+      <div className="card-accent" />
+      <h2>👋 Welcome to Your Dashboard</h2>
+      <p className="card-sub">
+        Track your resumes, take tests, and improve your skills
+      </p>
+
+      <div className="stats-grid">
+        <div className="stat-box">
+          <div className="stat-value">{resumes.length}</div>
+          <div className="stat-label">Resumes</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-value">{pendingTests.length}</div>
+          <div className="stat-label">Pending Tests</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-value">
+            {testHistory.filter((t) => t.status === "completed").length}
+          </div>
+          <div className="stat-label">Tests Completed</div>
+        </div>
+        <div className="stat-box">
+          <div className="stat-value">{roles.length}</div>
+          <div className="stat-label">Target Roles</div>
+        </div>
+      </div>
+
+      <div className="quick-actions">
+        <h3>Quick Start</h3>
+        <div className="action-buttons">
+          <button
+            className="action-btn primary"
+            onClick={() => setActiveTab("resumes")}
+          >
+            📄 Upload Resume
+          </button>
+          <button
+            className="action-btn secondary"
+            onClick={() => setActiveTab("tests")}
+          >
+            🧪 View Tests
+          </button>
+          <button
+            className="action-btn secondary"
+            onClick={() => navigate("/progress")}
+          >
+            📊 View Progress
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+
+  // ── Render: Resumes Tab ──────────────────────────────────────────────────
+
+  const renderResumes = () => (
+    <>
+      {/* Upload Form */}
+      <section className="dash-card upload-card">
+        <div className="card-accent" />
+        <h2>📤 Upload Your Resume</h2>
+        <p className="card-sub">Supported formats: PDF, DOC, DOCX</p>
+
+        <form onSubmit={handleUpload} className="upload-form">
+          <label className="file-input-wrapper">
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              disabled={loading}
+              className="file-input"
+            />
+            <div className="file-input-display">
+              <span className="file-icon">📎</span>
+              <span className="file-text">
+                {file ? file.name : "Choose a file..."}
+              </span>
+            </div>
+          </label>
+
+          <button
+            type="submit"
+            className="upload-btn"
+            disabled={!file || loading}
+          >
+            {loading ? "Uploading..." : "Upload Resume"}
+          </button>
+        </form>
+
+        {uploadMessage && (
+          <div
+            className={`upload-message ${
+              uploadMessage.includes("success") ? "success" : "error"
+            }`}
+          >
+            {uploadMessage}
+          </div>
+        )}
+      </section>
+
+      {/* Resume List */}
+      <section className="dash-card resume-list-card">
+        <div className="card-accent" />
+        <h2>📋 Your Resumes</h2>
+        <p className="card-sub">
+          {resumes.length} resume{resumes.length !== 1 ? "s" : ""} uploaded
+        </p>
+
+        {resumes.length === 0 ? (
+          <div className="empty-state">
+            <p className="empty-icon">📂</p>
+            <p className="empty-text">
+              No resumes yet. Upload one above to get started!
+            </p>
+          </div>
+        ) : (
+          <ul className="resume-list">
+            {resumes.map((resume) => (
+              <li key={resume.resume_id} className="resume-item">
+                <div className="resume-details">
+                  <div className="resume-name">📄 {resume.filename}</div>
+                  <div className="resume-date">
+                    Uploaded {formatDate(resume.uploaded_at)}
+                  </div>
+                </div>
+                <button
+                  className="resume-analyze-btn"
+                  onClick={() => fetchAnalysis(resume.resume_id)}
+                  disabled={loading}
+                >
+                  Analyze →
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
+  );
+
+  // ── Render: Tests Tab ────────────────────────────────────────────────────
+
+  const renderTests = () => (
+    <div className="tests-container">
+      {/* Pending Tests */}
+      <section className="dash-card pending-card">
+        <div className="card-accent" />
+        <h2>🕒 Pending Tests</h2>
+        <p className="card-sub">
+          {pendingTests.length} test{pendingTests.length !== 1 ? "s" : ""}{" "}
+          awaiting
+        </p>
+
+        {pendingTests.length === 0 ? (
+          <div className="empty-state">
+            <p className="empty-icon">✨</p>
+            <p className="empty-text">No pending tests at the moment.</p>
+          </div>
+        ) : (
+          <ul className="tests-list">
+            {pendingTests.map((test) => (
+              <li key={test.mock_test_id} className="test-item pending-item">
+                <div className="test-header">
+                  <span className="test-role">{test.role}</span>
+                  <span className="test-badge new">New</span>
+                </div>
+                <div className="test-topic">{test.skill_topic}</div>
+                <button
+                  className="test-start-btn"
+                  onClick={() =>
+                    navigate(`/mock-test?mock_test_id=${test.mock_test_id}`)
+                  }
+                >
+                  Start Test ▶
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* Test History */}
+      <section className="dash-card history-card">
+        <div className="card-accent" />
+        <h2>📊 Test History</h2>
+        <p className="card-sub">
+          {testHistory.filter((t) => t.status === "completed").length} completed
+        </p>
+
+        {testHistory.filter((t) => t.status === "completed").length === 0 ? (
+          <div className="empty-state">
+            <p className="empty-icon">📈</p>
+            <p className="empty-text">
+              No completed tests yet. Start a test to see your results here!
+            </p>
+          </div>
+        ) : (
+          <ul className="tests-list">
+            {testHistory
+              .filter((t) => t.status === "completed")
+              .map((test, idx) => (
+                <li key={`${idx}-${test.mock_test_id}`} className="test-item">
+                  <div className="test-header">
+                    <span className="test-role">{test.role}</span>
+                    <span
+                      className={`test-score-badge ${
+                        test.score >= 70
+                          ? "excellent"
+                          : test.score >= 50
+                            ? "good"
+                            : "needs-improvement"
+                      }`}
+                    >
+                      {test.score}%
+                    </span>
+                  </div>
+                  <div className="test-topic">{test.skill_topic}</div>
+                  <div className="test-date">{formatDate(test.completed_at)}</div>
+                </li>
+              ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+
+  // ── Render: Evaluation Tab ───────────────────────────────────────────────
+
+  const renderEvaluation = () => (
+    <>
+      {/* Role Selection */}
+      {roles.length > 0 && !evaluation && (
+        <section className="dash-card role-selection-card">
+          <div className="card-accent" />
+          <h2>🎯 Select a Target Role</h2>
+          <p className="card-sub">
+            Found {roles.length} matching role{roles.length !== 1 ? "s" : ""}
+          </p>
+
+          <div className="role-grid">
+            {roles.map((role, idx) => (
+              <button
+                key={idx}
+                className="role-option"
+                onClick={() => handleRoleSelection(role.role)}
+                disabled={loading}
+              >
+                <div className="role-option-name">{role.role}</div>
+                <div className="role-option-confidence">
+                  Match: {Math.round(role.confidence * 100)}%
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Evaluation Results */}
+      {evaluation && (
+        <>
+          <section className="dash-card evaluation-card">
+            <div className="card-accent" />
+            <h2>📊 ATS Evaluation</h2>
+            <p className="card-sub">Role: {evaluation.target_role}</p>
+
+            {/* ATS Score */}
+            <div className="ats-score-section">
+              <div className="score-display">
+                <span className="score-label">ATS Score</span>
+                <span className="score-number">
+                  {evaluation.ats?.ats_score ?? "N/A"}
+                </span>
+                <span className="score-max">/100</span>
+              </div>
+            </div>
+
+            {/* Missing Skills */}
+            <div className="missing-skills-section">
+              <h3>Missing Skills</h3>
+              {evaluation.ats?.missing_skills?.length > 0 ? (
+                <ul className="skills-list">
+                  {evaluation.ats.missing_skills.map((skill, idx) => (
+                    <li key={idx} className="skill-item">
+                      <span className="skill-icon">❌</span>
+                      <span className="skill-name">{skill}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="no-missing">Amazing! No missing skills.</p>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="evaluation-actions">
+              <button
+                className="action-btn primary"
+                onClick={() => navigate("/progress")}
+              >
+                📊 View Progress
+              </button>
+              <button
+                className="action-btn secondary"
+                onClick={() => {
+                  setEvaluation(null);
+                  setRoles([]);
+                  setSelectedResumeId(null);
+                }}
+              >
+                ← Back
+              </button>
+            </div>
+          </section>
+
+          {/* Learning Path */}
+          {evaluation.learning_path?.learning_path?.length > 0 && (
+            <section className="dash-card learning-path-card">
+              <div className="card-accent" />
+              <h2>🗺️ Learning Path</h2>
+              <p className="card-sub">
+                {evaluation.learning_path.learning_path.length} skill
+                {evaluation.learning_path.learning_path.length !== 1
+                  ? "s"
+                  : ""}{" "}
+                to master
+              </p>
+
+              <div className="learning-grid">
+                {evaluation.learning_path.learning_path.map((item, idx) => (
+                  <div key={idx} className="learning-item">
+                    <div className="learning-header">
+                      <h4>{item.skill}</h4>
+                      <span className="level-badge">{item.level}</span>
+                    </div>
+
+                    <div className="learning-content">
+                      <div className="learning-section">
+                        <strong>Focus Topics</strong>
+                        <ul>
+                          {item.focus_topics?.map((topic, i) => (
+                            <li key={i}>
+                              <span className="topic-icon">✓</span> {topic}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="learning-section">
+                        <strong>Projects</strong>
+                        <ul>
+                          {item.projects?.map((proj, i) => (
+                            <li key={i}>
+                              <span className="project-icon">🔨</span> {proj}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="learning-cta">
+                <button
+                  className="action-btn primary"
+                  onClick={() => navigate("/learning-path")}
+                >
+                  Start Learning 🚀
+                </button>
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* No Evaluation Yet */}
+      {!evaluation && roles.length === 0 && (
+        <section className="dash-card empty-eval-card">
+          <div className="card-accent" />
+          <div className="empty-state">
+            <p className="empty-icon">🔍</p>
+            <p className="empty-text">
+              Upload a resume and select a role to see your evaluation.
+            </p>
+            <button
+              className="action-btn primary"
+              onClick={() => setActiveTab("resumes")}
+            >
+              Upload Resume
+            </button>
+          </div>
+        </section>
+      )}
+    </>
+  );
+
+  // ── Main Render ──────────────────────────────────────────────────────────
 
   return (
     <div className="student-wrap">
-
-      {/* Upload Section */}
-      <div className="upload-section">
-        <h2>Student Dashboard</h2>
-
-        {error && <p style={{ color: "red" }}>{error}</p>}
-
-        <form onSubmit={handleUpload}>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
-
-          <button type="submit">Upload Resume</button>
-        </form>
-
-        {uploadMessage && <p>{uploadMessage}</p>}
-      </div>
-
-      {/* Resume List */}
-      <h3>Your Resumes</h3>
-
-      {resumes.length === 0 ? (
-        <p style={{ textAlign: "center", color: "#cbd5e1" }}>
-          No resumes uploaded yet.
-        </p>
-      ) : (
-        <ul className="resume-list">
-          {resumes.map((resume) => (
-            <li key={resume.resume_id} className="resume-card">
-              <button onClick={() => fetchAnalysis(resume.resume_id)}>
-                {resume.filename}
-              </button>
-
-              <p>Uploaded at: {formatDate(resume.uploaded_at)}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Mock Tests Section */}
-      <div className="dashboard-grid">
-        {/* Pending Tests */}
-        <div className="dashboard-card">
-          <h3>🕒 Pending Mock Tests</h3>
-          {pendingTests.length === 0 ? (
-            <p className="empty-sub">No assigned tests at the moment.</p>
-          ) : (
-            <ul className="mt-list">
-              {pendingTests.map(t => (
-                <li key={t.mock_test_id} className="mt-item pending-item">
-                  <div className="mt-info">
-                    <span className="mt-role">{t.role}</span>
-                    <span className="mt-topic">{t.skill_topic}</span>
-                  </div>
-                  <button 
-                    className="mt-btn-start"
-                    onClick={() => navigate(`/mock-test?mock_test_id=${t.mock_test_id}`)}
-                  >
-                    Start Test ▶
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Test History */}
-        <div className="dashboard-card">
-          <h3>📊 My Test History</h3>
-          {testHistory.length === 0 ? (
-            <p className="empty-sub">You haven't taken any tests yet.</p>
-          ) : (
-            <ul className="mt-list">
-              {testHistory.filter(t => t.status === "completed").map((t, idx) => (
-                <li key={`${idx}-${t.mock_test_id}`} className="mt-item">
-                  <div className="mt-info">
-                    <span className="mt-role">{t.role}</span>
-                    <span className="mt-topic">{t.skill_topic}</span>
-                    <span className="mt-date">{formatDate(t.completed_at)}</span>
-                  </div>
-                  <div className="mt-score">
-                    {t.score !== null ? (
-                      <span className={`score-badge ${t.score >= 70 ? 'good' : t.score >= 40 ? 'ok' : 'bad'}`}>
-                        {t.score}%
-                      </span>
-                    ) : (
-                      <span className="score-badge pending">Pending</span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* Header */}
+      <div className="dashboard-header">
+        <div className="header-inner">
+          <div className="header-content">
+            <h1>Student Dashboard</h1>
+            <p className="header-subtitle">
+              Manage your resumes, take tests, and track your progress
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Role Selection */}
-      {roles.length > 0 && (
-        <div className="role-selection-section">
-          <h3>Select a Target Role</h3>
-
-          {roles.map((r, idx) => (
-            <button
-              key={idx}
-              className="role-button"
-              onClick={() => handleRoleSelection(r.role)}
-            >
-              {r.role} ({Math.round(r.confidence * 100)}%)
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Evaluation */}
-      {evaluation && (
-        <div className="evaluation-section">
-          <h3>ATS Evaluation — {evaluation.target_role}</h3>
-
-          <p>
-            <strong>ATS Score:</strong>{" "}
-            {evaluation.ats?.ats_score ?? "N/A"}
-          </p>
-
-          <h4>Missing Skills</h4>
-          <ul>
-            {(evaluation.ats?.missing_skills?.core ||
-              evaluation.ats?.missing_skills ||
-              []).map((s, idx) => (
-                <li key={idx}>{s}</li>
-              ))}
-          </ul>
-
-          {/* CTA buttons — pinned before the long learning path */}
-          <div style={{ textAlign: "center", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}>
-            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
-            <button
-              onClick={() => navigate("/progress")}
-              style={{
-                padding: "12px 28px",
-                background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-                color: "white",
-                border: "none",
-                borderRadius: "10px",
-                fontSize: "14px",
-                fontWeight: "700",
-                cursor: "pointer",
-                boxShadow: "0 4px 18px rgba(139,92,246,0.35)",
-                transition: "all 0.3s ease",
-                letterSpacing: "0.3px",
-                whiteSpace: "nowrap",
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(139,92,246,0.5)"; }}
-              onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(139,92,246,0.35)"; }}
-            >
-              📊 View My Progress →
-            </button>
-            <button
-              onClick={() => navigate("/learning-path")}
-              style={{
-                padding: "12px 28px",
-                background: "linear-gradient(135deg, #0ea5e9, #8b5cf6)",
-                color: "white",
-                border: "none",
-                borderRadius: "10px",
-                fontSize: "14px",
-                fontWeight: "700",
-                cursor: "pointer",
-                boxShadow: "0 4px 18px rgba(14,165,233,0.35)",
-                transition: "all 0.3s ease",
-                letterSpacing: "0.3px",
-                whiteSpace: "nowrap",
-              }}
-              onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(14,165,233,0.5)"; }}
-              onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(14,165,233,0.35)"; }}
-            >
-              🗺️ View Learning Path →
-            </button>
-            <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
-          </div>
-
-          <h4>Learning Path</h4>
-          <div className="learning-grid">
-            {evaluation.learning_path?.learning_path?.map((item, index) => (
-              <div key={index} className="learning-card">
-
-                <div className="skill-title">{item.skill}</div>
-                <div className="skill-level">{item.level}</div>
-
-                <strong>Focus Topics:</strong>
-                <ul>
-                  {item.focus_topics?.map((topic, i) => (
-                    <li key={i}>{topic}</li>
-                  ))}
-                </ul>
-
-                <strong>Projects:</strong>
-                <ul>
-                  {item.projects?.map((proj, i) => (
-                    <li key={i}>{proj}</li>
-                  ))}
-                </ul>
-
-              </div>
-            ))}
-          </div>
-
-        </div>
-      )}
-
-      {/* View Progress CTA */}
-      {evaluation && (
-        <div style={{ textAlign: "center", marginTop: "-10px", marginBottom: "30px", position: "relative", zIndex: 1 }}>
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner">
+          <span className="error-text">⚠️ {error}</span>
           <button
-            onClick={() => navigate("/progress")}
-            style={{
-              padding: "13px 32px",
-              background: "linear-gradient(135deg, #8b5cf6, #ec4899)",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              fontSize: "15px",
-              fontWeight: "700",
-              cursor: "pointer",
-              boxShadow: "0 4px 18px rgba(139,92,246,0.35)",
-              transition: "all 0.3s ease",
-              letterSpacing: "0.3px",
-            }}
-            onMouseOver={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 28px rgba(139,92,246,0.5)"; }}
-            onMouseOut={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 4px 18px rgba(139,92,246,0.35)"; }}
+            className="error-close"
+            onClick={() => setError("")}
+            aria-label="Close error"
           >
-            📊 View My Progress →
+            ✕
           </button>
         </div>
       )}
 
-      {/* Personalised ChatBot */}
-      <ChatBot resumeId={selectedResumeId} />
+      {/* Sub Navigation */}
+      <nav className="dashboard-nav">
+        <div className="nav-inner">
+          {NAV_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`nav-tab ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={activeTab === tab.id ? "page" : undefined}
+            >
+              <span className="nav-icon">{tab.icon}</span>
+              <span className="nav-label">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
 
+      {/* Main Content */}
+      <main className="dashboard-main">
+        <div className="content-wrapper">
+          {activeTab === "overview" && renderOverview()}
+          {activeTab === "resumes" && renderResumes()}
+          {activeTab === "tests" && renderTests()}
+          {activeTab === "evaluation" && renderEvaluation()}
+        </div>
+      </main>
+
+      {/* ChatBot */}
+      <ChatBot resumeId={selectedResumeId} />
     </div>
   );
 }
