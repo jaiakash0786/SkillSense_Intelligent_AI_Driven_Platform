@@ -174,7 +174,7 @@ def get_resume_analysis(
 
     analysis = db.query(AnalysisResult).filter(
         AnalysisResult.resume_id == resume.id
-    ).first()
+    ).order_by(AnalysisResult.id.desc()).first()
 
     if not analysis:
         return {"error": "Analysis not found for this resume"}

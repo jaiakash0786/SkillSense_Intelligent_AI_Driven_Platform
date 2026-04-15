@@ -102,14 +102,32 @@ function ChatBot({ resumeId }) {
         }
     };
 
-    // Simple markdown-like bold rendering
+    // Render markdown: **bold**, newlines, and bullet points
     const renderContent = (text) => {
-        const parts = text.split(/(\*\*[^*]+\*\*)/g);
-        return parts.map((part, i) => {
-            if (part.startsWith("**") && part.endsWith("**")) {
-                return <strong key={i}>{part.slice(2, -2)}</strong>;
+        return text.split("\n").map((line, lineIdx) => {
+            // Render bold within each line
+            const boldParts = line.split(/(\*\*[^*]+\*\*)/g).map((part, i) => {
+                if (part.startsWith("**") && part.endsWith("**")) {
+                    return <strong key={i}>{part.slice(2, -2)}</strong>;
+                }
+                return <span key={i}>{part}</span>;
+            });
+
+            // Bullet lines (- item or * item)
+            const isBullet = /^(\s*[-*]\s)/.test(line);
+            if (isBullet) {
+                return (
+                    <div key={lineIdx} style={{ display: "flex", gap: "6px", margin: "2px 0" }}>
+                        <span style={{ color: "#a78bfa", flexShrink: 0 }}>•</span>
+                        <span>{boldParts}</span>
+                    </div>
+                );
             }
-            return <span key={i}>{part}</span>;
+
+            // Empty line → spacing
+            if (line.trim() === "") return <div key={lineIdx} style={{ height: "6px" }} />;
+
+            return <div key={lineIdx}>{boldParts}</div>;
         });
     };
 

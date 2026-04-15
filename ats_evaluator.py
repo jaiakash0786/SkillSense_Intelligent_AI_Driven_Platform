@@ -29,41 +29,46 @@ def evaluate_ats(resume_data: dict, rag_context: list[str], target_role: str):
     context_text = "\n\n".join(rag_context)
 
     prompt = f"""
-You are an ATS evaluation engine.
+You are a strict ATS (Applicant Tracking System) scoring engine.
 
-TARGET ROLE:
-{target_role}
+TARGET ROLE: {target_role}
 
-RETRIEVED KNOWLEDGE (USE ONLY THIS):
+RETRIEVED JOB KNOWLEDGE (use ONLY this to evaluate):
 {context_text}
 
 CANDIDATE RESUME DATA:
 {json.dumps(resume_data, indent=2)}
 
-TASK:
-Evaluate the resume strictly using the retrieved knowledge.
+SCORING FORMULA (must follow exactly):
+- Skill match vs required skills for the role  → up to 50 points
+- Relevant experience (years, job titles)       → up to 25 points
+- Projects with measurable/quantified impact    → up to 15 points
+- Education relevance (degree, certifications)  → up to 10 points
 
-Return ONLY valid JSON in the following format:
+Compute each component separately, then sum them for the final ats_score.
+A candidate missing most required skills should score below 40.
+A candidate matching most required skills should score above 70.
+Never give a generic middle score — be specific to THIS resume.
 
+Return ONLY valid JSON:
 {{
-  "ats_score": 0,
-  "matched_skills": [],
-  "missing_skills": [],
-  "strengths": [],
-  "improvements": []
+  "ats_score": <integer between 0 and 100>,
+  "matched_skills": [<list of skills from resume that match the role>],
+  "missing_skills": [<list of required skills NOT found in resume>],
+  "strengths": [<2-4 specific strengths of this candidate>],
+  "improvements": [<2-4 specific improvements needed>]
 }}
 
 RULES:
-- Do NOT invent skills
-- Do NOT use outside knowledge
-- Score must be between 0 and 100
-- No explanations outside JSON
+- Do NOT invent skills not present in the resume data
+- Do NOT use any knowledge outside the retrieved job knowledge
+- No text, explanations, or markdown outside the JSON object
 """
 
     response = client.chat.completions.create(
         model="llama-3.1-8b-instant",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0
+        temperature=0.3
     )
 
     raw = response.choices[0].message.content
