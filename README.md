@@ -370,5 +370,5 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ---
 
 <p align="center">
-  Built with ❤️ by <strong>Jaiakash P</strong> · Powered by Google Gemini + RAG
+  Built with ❤️ by <strong>Jaiakash P</strong> 
 </p>
