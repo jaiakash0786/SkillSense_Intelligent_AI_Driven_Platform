@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Skill Analyser – Architecture Diagrams</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;color:#1e293b;}
+
+/* ===== TOP NAV ===== */
+.top-bar{background:#1e293b;padding:14px 32px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.3);}
+.top-bar h1{color:#fff;font-size:15px;font-weight:700;letter-spacing:-0.2px;white-space:nowrap;}
+.top-bar .subtitle{color:#94a3b8;font-size:11px;font-weight:400;}
+.tab-nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto;}
+.tab-btn{padding:6px 14px;border-radius:6px;border:none;background:transparent;color:#94a3b8;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:0.3px;transition:all .2s;}
+.tab-btn:hover{background:#334155;color:#e2e8f0;}
+.tab-btn.active{background:#6366f1;color:#fff;}
+
+/* ===== MAIN CONTENT ===== */
+.content{padding:32px;max-width:1200px;margin:0 auto;}
+.diagram-page{display:none;}
+.diagram-page.active{display:block;}
+
+/* ===== DIAGRAM CARD ===== */
+.diagram-card{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,0.07);padding:32px 36px 28px;margin-bottom:24px;}
+.diagram-title{font-size:16px;font-weight:800;color:#0f172a;margin-bottom:4px;letter-spacing:-0.3px;}
+.diagram-desc{font-size:12px;color:#64748b;margin-bottom:24px;max-width:700px;line-height:1.6;}
+
+/* ===== LAYERS ===== */
+.layer{border-radius:10px;padding:16px 18px;margin-bottom:14px;position:relative;}
+.l-user   {background:#eff6ff;border:2px solid #bfdbfe;}
+.l-front  {background:#f0fdf4;border:2px solid #bbf7d0;}
+.l-api    {background:#fefce8;border:2px solid #fde68a;}
+.l-core   {background:#fdf4ff;border:2px solid #e9d5ff;}
+.l-llm    {background:#fff7ed;border:2px solid #fed7aa;}
+.l-rag    {background:#f0f9ff;border:2px solid #bae6fd;}
+.l-data   {background:#f0fdfa;border:2px solid #99f6e4;}
+.l-auth   {background:#fdf2f8;border:2px solid #f0abfc;}
+.l-mock   {background:#fff1f2;border:2px solid #fecdd3;}
+.l-chat   {background:#f5f3ff;border:2px solid #ddd6fe;}
+.l-prog   {background:#fafaf9;border:2px solid #d6d3d1;}
+
+.layer-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.layer-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.layer-name{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;}
+.tech-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:9px;font-weight:700;margin-left:6px;}
+.tb-py  {background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
+.tb-re  {background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+.tb-fa  {background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;}
+.tb-sq  {background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd;}
+.tb-fi  {background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.tb-gr  {background:#fff7ed;color:#9a3412;border:1px solid #fdba74;}
+.tb-jw  {background:#f0fdf4;color:#166534;border:1px solid #86efac;}
+.tb-st  {background:#e0e7ff;color:#3730a3;border:1px solid #a5b4fc;}
+
+/* ===== BOX CARDS ===== */
+.box-row{display:flex;align-items:flex-start;flex-wrap:wrap;gap:10px;}
+.box-flow{display:flex;align-items:center;flex-wrap:wrap;gap:0;}
+.box{border-radius:8px;padding:10px 14px;font-size:12px;min-width:120px;position:relative;}
+.box-title{font-size:12px;font-weight:700;color:#0f172a;margin-bottom:3px;}
+.box-sub{font-size:10.5px;color:#475569;line-height:1.45;}
+.box-icon{font-size:16px;margin-bottom:4px;display:block;}
+.b-blue  {background:#dbeafe;border:1.5px solid #93c5fd;}
+.b-green {background:#dcfce7;border:1.5px solid #86efac;}
+.b-yel   {background:#fef9c3;border:1.5px solid #fde047;}
+.b-pur   {background:#ede9fe;border:1.5px solid #c4b5fd;}
+.b-ora   {background:#ffedd5;border:1.5px solid #fdba74;}
+.b-sky   {background:#e0f2fe;border:1.5px solid #7dd3fc;}
+.b-teal  {background:#ccfbf1;border:1.5px solid #5eead4;}
+.b-pink  {background:#fce7f3;border:1.5px solid #f9a8d4;}
+.b-ind   {background:#e0e7ff;border:1.5px solid #a5b4fc;}
+.b-red   {background:#fee2e2;border:1.5px solid #fca5a5;}
+.b-gray  {background:#f1f5f9;border:1.5px solid #cbd5e1;}
+.b-lime  {background:#f7fee7;border:1.5px solid #bef264;}
+.b-vio   {background:#f5f3ff;border:1.5px solid #ddd6fe;}
+.b-rose  {background:#fff1f2;border:1.5px solid #fecdd3;}
+.b-amber {background:#fffbeb;border:1.5px solid #fde68a;}
+
+/* ===== ARROWS ===== */
+.arr{display:flex;align-items:center;justify-content:center;padding:0 6px;color:#94a3b8;font-size:18px;flex-shrink:0;}
+.arr-v{display:flex;justify-content:center;align-items:center;padding:4px 0;color:#94a3b8;font-size:18px;}
+.arr-label{font-size:9.5px;color:#64748b;background:#fff;padding:1px 6px;border:1px solid #e2e8f0;border-radius:4px;white-space:nowrap;}
+
+/* ===== STEP BADGE ===== */
+.step{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#6366f1;color:#fff;font-size:10px;font-weight:800;flex-shrink:0;margin-right:6px;}
+
+/* pipeline horizontal scroll */
+.pipe-flow{display:flex;align-items:stretch;overflow-x:auto;gap:0;padding-bottom:6px;}
+.pipe-box{flex-shrink:0;min-width:130px;max-width:150px;}
+
+/* ===== LEGEND ===== */
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:20px;padding-top:14px;border-top:1px solid #e2e8f0;align-items:center;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10.5px;color:#64748b;}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ===== FIGURE CAPTION ===== */
+.fig-cap{text-align:center;font-size:11.5px;color:#475569;margin-top:16px;font-style:italic;line-height:1.6;}
+.fig-cap b{font-style:normal;color:#1e293b;}
+
+/* ===== DB TABLE ===== */
+.db-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;}
+.db-table{background:#fff;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;}
+.db-thead{background:#1e293b;color:#fff;font-size:10px;font-weight:700;padding:7px 10px;letter-spacing:0.5px;}
+.db-row{padding:4px 10px;font-size:10px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:8px;}
+.db-row:last-child{border-bottom:none;}
+.db-field{color:#0f172a;font-weight:500;}
+.db-type{color:#6366f1;font-family:'Fira Code',monospace;font-size:9px;}
+
+/* ===== OVERALL ARCH — special big layout ===== */
+.overall-wrap{width:100%;overflow-x:auto;}
+.overall-col{display:flex;flex-direction:column;gap:10px;width:100%;}
+.arch-band{border-radius:10px;padding:14px 16px;position:relative;}
+.band-title{position:absolute;left:-112px;top:50%;transform:translateY(-50%);width:100px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#64748b;white-space:nowrap;}
+.arch-row-labeled{display:flex;align-items:center;margin-left:120px;}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:900px){
+  .arch-row-labeled{margin-left:0;}
+  .band-title{display:none;}
+  .content{padding:16px;}
+  .top-bar{flex-wrap:wrap;gap:8px;}
+  .tab-nav{margin-left:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOP NAV ===== -->
+<div class="top-bar">
+  <div>
+    <div class="top-bar h1" style="color:#fff;font-size:15px;font-weight:700;">AI-Powered Skill Analyser — Architecture</div>
+    <div class="subtitle">Publication-Quality System Diagrams &nbsp;·&nbsp; Paper Ready</div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('overall',this)">① Overall</button>
+    <button class="tab-btn" onclick="showTab('pipeline',this)">② AI Pipeline</button>
+    <button class="tab-btn" onclick="showTab('rag',this)">③ RAG Engine</button>
+    <button class="tab-btn" onclick="showTab('backend',this)">④ Backend API</button>
+    <button class="tab-btn" onclick="showTab('frontend',this)">⑤ Frontend</button>
+    <button class="tab-btn" onclick="showTab('datamodel',this)">⑥ Data Model</button>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ============================================================
+     PAGE 1 – OVERALL SYSTEM ARCHITECTURE
+============================================================ -->
+<div class="diagram-page active" id="page-overall">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 1 — Overall System Architecture</div>
+    <div class="diagram-desc">
+      High-level view of the complete AI-powered skill analyser system. Shows the six architectural layers and their interactions:
+      users → React frontend → FastAPI gateway → AI pipeline → LLM inference + RAG knowledge base → SQLite persistence.
+    </div>
+
+    <!-- L1: USER -->
+    <div class="layer l-user">
+      <div class="layer-hdr">
+        <span class="layer-dot" style="background:#3b82f6;"></span>
+        <span class="layer-name" style="color:#1d4ed8;">Layer 1 — User Roles</span>
+      </div>
+      <div class="box-row">
+        <div class="box b-blue">
+          <span class="box-icon">🎓</span>
+          <div class="box-title">Student</div>
+          <div class="box-sub">Upload resume · View ATS score · Track skill progress · Take mock tests · Chat</div>
+        </div>
+        <div class="box b-ind">
+          <span class="box-icon">💼</span>
+          <div class="box-title">Recruiter</div>
+          <div class="box-sub">Search candidates · Set job requirements · View ranked profiles</div>
+        </div>
+      </div>
+    </div>
+    <div class="arr-v">↕ <span class="arr-label" style="margin-left:8px;">Browser / HTTPS</span></div>
+
+    <!-- L2: FRONTEND -->
+    <div class="layer l-front">
+      <div class="layer-hdr">
+        <span class="layer-dot" style="background:#22c55e;"></span>
+        <span class="layer-name" style="color:#15803d;">Layer 2 — Frontend</span>
+        <span class="tech-badge tb-re">React.js</span>
+        <span class="tech-badge tb-jw">JWT</span>
+      </div>
+      <div class="box-flow">
+        <div class="box b-green"><span class="box-icon">🔐</span><div class="box-title">Auth Pages</div><div class="box-sub">Login / Register</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><span class="box-icon">📊</span><div class="box-title">Student Dashboard</div><div class="box-sub">ATS + Skill Checklist</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><span class="box-icon">🗺️</span><div class="box-title">Learning Path</div><div class="box-sub">Personalised roadmap</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><span class="box-icon">📝</span><div class="box-title">Mock Tests</div><div class="box-sub">AI MCQs & scoring</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><span class="box-icon">💬</span><div class="box-title">ChatBot</div><div class="box-sub">Context-aware Q&A</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><span class="box-icon">🏢</span><div class="box-title">Recruiter Dashboard</div><div class="box-sub">Candidate search</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↕ <span class="arr-label" style="margin-left:8px;">REST API · JWT Bearer token</span></div>
+
+    <!-- L3: API -->
+    <div class="layer l-api">
+      <div class="layer-hdr">
+        <span class="layer-dot" style="background:#eab308;"></span>
+        <span class="layer-name" style="color:#a16207;">Layer 3 — API Gateway</span>
+        <span class="tech-badge tb-fa">FastAPI</span>
+        <span class="tech-badge tb-jw">OAuth2 + JWT</span>
+      </div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:8px;">
+        <div class="box b-yel"><div class="box-title">🔑 /auth</div><div class="box-sub">Login · Register · Token</div></div>
+        <div class="box b-yel"><div class="box-title">🎓 /student</div><div class="box-sub">Resume upload · ATS results</div></div>
+        <div class="box b-yel"><div class="box-title">📈 /progress</div><div class="box-sub">Skill tracking · History</div></div>
+        <div class="box b-yel"><div class="box-title">📝 /mock_test</div><div class="box-sub">Generate & grade tests</div></div>
+        <div class="box b-yel"><div class="box-title">💬 /chatbot</div><div class="box-sub">RAG chat</div></div>
+        <div class="box b-yel"><div class="box-title">🏢 /recruiter</div><div class="box-sub">Search · Rank</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓ <span class="arr-label" style="margin-left:8px;">Internal service call</span></div>
+
+    <!-- L4: AI PIPELINE -->
+    <div class="layer l-core">
+      <div class="layer-hdr">
+        <span class="layer-dot" style="background:#8b5cf6;"></span>
+        <span class="layer-name" style="color:#6d28d9;">Layer 4 — Core AI Pipeline</span>
+        <span class="tech-badge tb-py">Python</span>
+      </div>
+      <div class="box-flow" style="flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;">
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">1</span><span class="box-title">Resume Reader</span></div><div class="box-sub">PDF → raw text</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">2</span><span class="box-title">LLM Parser</span></div><div class="box-sub">Extract skills, exp, edu</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">3</span><span class="box-title">Skill Normaliser</span></div><div class="box-sub">Alias resolution</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ind pipe-box" style="border-width:2px;"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step" style="background:#4f46e5;">4</span><span class="box-title">RAG Retrieval</span></div><div class="box-sub">FAISS semantic search</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">5</span><span class="box-title">ATS Evaluator</span></div><div class="box-sub">Score 0–100</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">6</span><span class="box-title">Role Detector</span></div><div class="box-sub">AI role suggestions</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur pipe-box"><div style="display:flex;align-items:center;margin-bottom:4px;"><span class="step">7</span><span class="box-title">Learning Path</span></div><div class="box-sub">Personalised roadmap</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↕ <span class="arr-label" style="margin-left:8px;">Embedding queries / LLM prompts</span></div>
+
+    <!-- L5: LLM + RAG side by side -->
+    <div style="display:flex;gap:14px;margin-bottom:14px;">
+      <div class="layer l-llm" style="flex:1;margin-bottom:0;">
+        <div class="layer-hdr">
+          <span class="layer-dot" style="background:#f97316;"></span>
+          <span class="layer-name" style="color:#c2410c;">Layer 5a — LLM</span>
+          <span class="tech-badge tb-gr">Groq API</span>
+        </div>
+        <div class="box-row">
+          <div class="box b-ora"><span class="box-icon">⚡</span><div class="box-title">Llama 3.1 8B Instant</div><div class="box-sub">Parsing · ATS · Path · Role · Chat · MCQ</div></div>
+        </div>
+      </div>
+      <div class="layer l-rag" style="flex:1;margin-bottom:0;">
+        <div class="layer-hdr">
+          <span class="layer-dot" style="background:#0ea5e9;"></span>
+          <span class="layer-name" style="color:#0369a1;">Layer 5b — RAG Knowledge Base</span>
+          <span class="tech-badge tb-fi">FAISS</span>
+          <span class="tech-badge tb-st">MiniLM</span>
+        </div>
+        <div class="box-row">
+          <div class="box b-sky"><span class="box-icon">📂</span><div class="box-title">Markdown Docs</div><div class="box-sub">roles · domains · skills · learning · ATS</div></div>
+          <div class="box b-sky"><span class="box-icon">🔢</span><div class="box-title">FAISS Vector Index</div><div class="box-sub">384-dim embeddings · flat L2</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="arr-v">↕ <span class="arr-label" style="margin-left:8px;">SQLAlchemy ORM</span></div>
+
+    <!-- L6: DB -->
+    <div class="layer l-data">
+      <div class="layer-hdr">
+        <span class="layer-dot" style="background:#14b8a6;"></span>
+        <span class="layer-name" style="color:#0f766e;">Layer 6 — Data Persistence</span>
+        <span class="tech-badge tb-sq">SQLite</span>
+        <span class="tech-badge tb-py">SQLAlchemy</span>
+      </div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:8px;">
+        <div class="box b-teal"><div class="box-title">👤 User</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">📄 Resume</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">📊 AnalysisResult</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">📈 ScoreHistory</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">✅ SkillProgress</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">📝 MockTest</div></div>
+        <div class="arr">→</div>
+        <div class="box b-teal"><div class="box-title">🏆 MockTestResult</div></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#3b82f6;"></div>User Layer</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#22c55e;"></div>React Frontend</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#eab308;"></div>FastAPI Gateway</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#8b5cf6;"></div>AI Pipeline</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#f97316;"></div>LLM Inference</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#0ea5e9;"></div>RAG Knowledge Base</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#14b8a6;"></div>SQLite Persistence</div>
+    </div>
+    <div class="fig-cap"><b>Figure 1.</b> Overall system architecture of the AI-powered skill analyser. The system processes student resumes through a 7-step RAG-augmented AI pipeline, evaluated against a domain-specific knowledge base retrieved via FAISS vector search, with results stored in a relational database.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 2 – AI PIPELINE
+============================================================ -->
+<div class="diagram-page" id="page-pipeline">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 2 — Core AI Processing Pipeline</div>
+    <div class="diagram-desc">
+      Detailed view of the 7-stage sequential processing pipeline. Each stage is implemented as an independent Python module. The pipeline ingests a raw PDF resume and produces an ATS score, role suggestions, and a personalised learning path.
+    </div>
+
+    <!-- Step 1 -->
+    <div class="layer" style="background:#f8fafc;border:2px solid #e2e8f0;margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step">1</span><span class="layer-name" style="color:#475569;">Resume Ingestion</span><code style="font-size:10px;background:#f1f5f9;padding:2px 6px;border-radius:4px;margin-left:8px;">resume_reader.py</code></div>
+      <div class="box-flow">
+        <div class="box b-gray"><span class="box-icon">📄</span><div class="box-title">PDF File</div><div class="box-sub">Student uploads .pdf</div></div>
+        <div class="arr">→</div>
+        <div class="box b-gray"><span class="box-icon">🔍</span><div class="box-title">PDF Text Extractor</div><div class="box-sub">PyPDF / raw text parsing</div></div>
+        <div class="arr">→</div>
+        <div class="box b-gray"><span class="box-icon">📝</span><div class="box-title">Raw Resume Text</div><div class="box-sub">Unstructured plain text string</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 2 -->
+    <div class="layer l-llm" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step">2</span><span class="layer-name" style="color:#c2410c;">LLM Resume Parsing</span><code style="font-size:10px;background:#fff7ed;padding:2px 6px;border-radius:4px;margin-left:8px;">resume_parser.py</code><span class="tech-badge tb-gr">Groq · Llama 3.1</span></div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:10px;">
+        <div class="box b-ora"><div class="box-title">Zero-shot LLM Prompt</div><div class="box-sub">Structured JSON extraction instruction</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora" style="min-width:160px;"><div class="box-title">Extracted Fields</div><div class="box-sub">name · summary · location<br/>skills[ ] · education[ ]<br/>experience[ ] · projects[ ]</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora"><div class="box-title">JSON Cleaner</div><div class="box-sub">Strip markdown, fix trailing commas, regex extraction</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 3 -->
+    <div class="layer" style="background:#fafaf9;border:2px solid #d6d3d1;margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step">3</span><span class="layer-name" style="color:#57534e;">Skill Normalisation</span><code style="font-size:10px;background:#fafaf9;padding:2px 6px;border-radius:4px;margin-left:8px;">skill_normalizer.py</code></div>
+      <div class="box-flow">
+        <div class="box b-gray"><div class="box-title">Raw Skills List</div><div class="box-sub">e.g. ["JS","javascript","React js"]</div></div>
+        <div class="arr">→</div>
+        <div class="box b-gray"><div class="box-title">Alias Mapping</div><div class="box-sub">Canonical name resolution</div></div>
+        <div class="arr">→</div>
+        <div class="box b-gray"><div class="box-title">Deduplication</div><div class="box-sub">Unique skill tokens</div></div>
+        <div class="arr">→</div>
+        <div class="box b-gray"><div class="box-title">Normalised Skills</div><div class="box-sub">["JavaScript","React"]</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 4 -->
+    <div class="layer l-rag" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step" style="background:#4f46e5;">4</span><span class="layer-name" style="color:#0369a1;">RAG Retrieval</span><code style="font-size:10px;background:#e0f2fe;padding:2px 6px;border-radius:4px;margin-left:8px;">rag_engine_v2.py</code><span class="tech-badge tb-fi">FAISS</span><span class="tech-badge tb-st">MiniLM-L6-v2</span></div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:10px;">
+        <div class="box b-sky"><div class="box-title">Query Builder</div><div class="box-sub">"{role} {domain} ATS requirements"</div></div>
+        <div class="arr">→</div>
+        <div class="box b-sky"><div class="box-title">Sentence Encoder</div><div class="box-sub">all-MiniLM-L6-v2<br/>384-dim embedding</div></div>
+        <div class="arr">→</div>
+        <div class="box b-sky"><div class="box-title">FAISS Search</div><div class="box-sub">Top-K × 2 candidates<br/>Flat L2 index</div></div>
+        <div class="arr">→</div>
+        <div class="box b-sky"><div class="box-title">Metadata Filter</div><div class="box-sub">role · domain · doc_type filter</div></div>
+        <div class="arr">→</div>
+        <div class="box b-sky"><div class="box-title">Context Chunks</div><div class="box-sub">Top-K grounded text passages</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 5 -->
+    <div class="layer l-llm" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step">5</span><span class="layer-name" style="color:#c2410c;">ATS Evaluation</span><code style="font-size:10px;background:#fff7ed;padding:2px 6px;border-radius:4px;margin-left:8px;">ats_evaluator.py</code><span class="tech-badge tb-gr">Groq · Llama 3.1</span></div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:10px;">
+        <div class="box b-ora" style="min-width:160px;"><div class="box-title">Scoring Prompt</div><div class="box-sub">Skills (50pts) · Experience (25pts) · Projects (15pts) · Education (10pts)</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora"><div class="box-title">LLM Scoring</div><div class="box-sub">Temperature 0.3<br/>Llama 3.1 8B</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora" style="min-width:160px;"><div class="box-title">ATS Report (JSON)</div><div class="box-sub">ats_score · matched_skills<br/>missing_skills · strengths<br/>improvements</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 6 -->
+    <div class="layer l-core" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="step">6</span><span class="layer-name" style="color:#6d28d9;">Role Detection</span><code style="font-size:10px;background:#fdf4ff;padding:2px 6px;border-radius:4px;margin-left:8px;">role_detector.py</code></div>
+      <div class="box-flow">
+        <div class="box b-pur"><div class="box-title">Parsed Resume</div><div class="box-sub">Normalised skills + experience</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur"><div class="box-title">Role RAG Context</div><div class="box-sub">Top-10 role documents</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur"><div class="box-title">LLM Role Inference</div><div class="box-sub">AI-suggested job roles</div></div>
+        <div class="arr">→</div>
+        <div class="box b-pur"><div class="box-title">Ranked Suggestions</div><div class="box-sub">role + confidence score</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓</div>
+
+    <!-- Step 7 -->
+    <div class="layer l-llm">
+      <div class="layer-hdr"><span class="step">7</span><span class="layer-name" style="color:#c2410c;">Learning Path Generation</span><code style="font-size:10px;background:#fff7ed;padding:2px 6px;border-radius:4px;margin-left:8px;">learning_path_generator.py</code><span class="tech-badge tb-gr">Groq · Llama 3.1</span></div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:10px;">
+        <div class="box b-ora"><div class="box-title">Missing Skills</div><div class="box-sub">From ATS report</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora"><div class="box-title">Skills RAG Context</div><div class="box-sub">Learning resources per skill</div></div>
+        <div class="arr">→</div>
+        <div class="box b-ora" style="min-width:180px;"><div class="box-title">Personalised Roadmap (JSON)</div><div class="box-sub">per skill: level · focus_topics[ ] · projects[ ] · timeline</div></div>
+      </div>
+    </div>
+
+    <div class="fig-cap" style="margin-top:16px;"><b>Figure 2.</b> Core AI processing pipeline. The 7-stage sequential pipeline ingests a raw PDF resume and produces structured ATS evaluation results and personalised learning path recommendations through iterative LLM inference augmented by domain-specific RAG retrieval.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 3 – RAG ENGINE
+============================================================ -->
+<div class="diagram-page" id="page-rag">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 3 — RAG Knowledge Engine Architecture</div>
+    <div class="diagram-desc">
+      Internal architecture of the Retrieval-Augmented Generation engine (<code>MetadataRAGEngine</code>). Shows the offline indexing phase (document loading, chunking, embedding) and the online retrieval phase (query encoding, FAISS search, metadata filtering).
+    </div>
+
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+
+      <!-- LEFT: Offline Indexing -->
+      <div style="flex:1;min-width:280px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6366f1;margin-bottom:12px;text-align:center;border-bottom:2px solid #6366f1;padding-bottom:6px;">OFFLINE — Document Indexing Phase</div>
+
+        <div class="layer l-data" style="margin-bottom:10px;">
+          <div class="layer-hdr"><span class="layer-dot" style="background:#0ea5e9;"></span><span class="layer-name" style="color:#0369a1;font-size:9px;">Knowledge Document Store</span></div>
+          <div class="box-flow" style="flex-wrap:wrap;gap:6px;">
+            <div class="box b-sky" style="min-width:80px;"><div class="box-title" style="font-size:10px;">📁 roles/</div><div class="box-sub">backend_engineer.md<br/>frontend_engineer.md…</div></div>
+            <div class="box b-sky" style="min-width:80px;"><div class="box-title" style="font-size:10px;">📁 domains/</div><div class="box-sub">web_development.md<br/>data_science.md…</div></div>
+            <div class="box b-sky" style="min-width:80px;"><div class="box-title" style="font-size:10px;">📁 skills/</div><div class="box-sub">python.md<br/>react.md…</div></div>
+            <div class="box b-sky" style="min-width:80px;"><div class="box-title" style="font-size:10px;">📁 learning/</div><div class="box-sub">learning_resource.md…</div></div>
+            <div class="box b-sky" style="min-width:80px;"><div class="box-title" style="font-size:10px;">📁 ats/</div><div class="box-sub">ats_criteria.md…</div></div>
+          </div>
+        </div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ind" style="margin-bottom:10px;"><div class="box-title">Document Loader</div><div class="box-sub">os.walk() · .md files · extract doc_type, role, domain, skill metadata from path structure</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ind" style="margin-bottom:10px;"><div class="box-title">Text Chunker</div><div class="box-sub">Split by word count (chunk_size = 300) · attach metadata copy to each chunk · store in text_chunks[ ] + metadata[ ]</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ind" style="margin-bottom:10px;"><div class="box-title">Sentence Encoder</div><div class="box-sub">all-MiniLM-L6-v2 (SentenceTransformers)<br/>Output: 384-dimensional dense vectors</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ind" style="background:#e0e7ff;border:2px dashed #6366f1;"><div class="box-title">🗄️ FAISS Index</div><div class="box-sub">IndexFlatL2 · d=384<br/>In-memory · built at startup<br/>Singleton pattern</div></div>
+      </div>
+
+      <!-- RIGHT: Online Retrieval -->
+      <div style="flex:1;min-width:280px;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#f97316;margin-bottom:12px;text-align:center;border-bottom:2px solid #f97316;padding-bottom:6px;">ONLINE — Query Retrieval Phase</div>
+
+        <div class="box b-ora" style="margin-bottom:10px;"><div class="box-title">Query Input</div><div class="box-sub">e.g. "backend_engineer web_development ATS requirements" or "docker kubernetes microservices"</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ora" style="margin-bottom:10px;"><div class="box-title">Query Encoder</div><div class="box-sub">Same all-MiniLM-L6-v2 model<br/>Output: 384-dim query vector</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ora" style="margin-bottom:10px;"><div class="box-title">FAISS Search</div><div class="box-sub">index.search(query_vec, top_k × 2)<br/>Returns distances + indices</div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ora" style="margin-bottom:10px;"><div class="box-title">Metadata Filter</div><div class="box-sub">
+          Filter by:<br/>
+          • role (e.g. "backend_engineer")<br/>
+          • domain (e.g. "web_development")<br/>
+          • doc_type (e.g. ["roles","ats","domains"])
+        </div></div>
+        <div class="arr-v">↓</div>
+        <div class="box b-ora" style="background:#ffedd5;border:2px dashed #f97316;"><div class="box-title">📤 Retrieved Context Chunks</div><div class="box-sub">Top-K grounded text passages<br/>Injected into LLM prompt as context</div></div>
+      </div>
+    </div>
+
+    <div class="fig-cap" style="margin-top:20px;"><b>Figure 3.</b> Architecture of the Retrieval-Augmented Generation (RAG) knowledge engine. The system uses an offline indexing phase to embed domain-specific markdown documents into a FAISS vector index, and an online retrieval phase to fetch semantically relevant, metadata-filtered context chunks for grounding LLM responses.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 4 – BACKEND API
+============================================================ -->
+<div class="diagram-page" id="page-backend">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 4 — Backend API Architecture</div>
+    <div class="diagram-desc">
+      Modular FastAPI backend structure. Shows route modules, their responsibilities, middleware layers, database models, and service dependencies. All routes are JWT-protected via OAuth2PasswordBearer.
+    </div>
+
+    <!-- Middleware stack -->
+    <div class="layer l-api" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="layer-dot" style="background:#eab308;"></span><span class="layer-name" style="color:#a16207;">FastAPI Application (Mimini Backend v1.0)</span><span class="tech-badge tb-fa">FastAPI</span></div>
+      <div class="box-row">
+        <div class="box b-yel"><div class="box-title">🌐 CORS Middleware</div><div class="box-sub">Allow all origins · all methods · all headers</div></div>
+        <div class="box b-yel"><div class="box-title">🔑 JWT Bearer Auth</div><div class="box-sub">OAuth2PasswordBearer · HS256 · token expiry</div></div>
+        <div class="box b-yel"><div class="box-title">📖 Custom OpenAPI</div><div class="box-sub">Bearer auth injected into all routes' Swagger docs</div></div>
+        <div class="box b-yel"><div class="box-title">🗄️ DB Init</div><div class="box-sub">Base.metadata.create_all() on startup</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓ Router modules</div>
+
+    <!-- Route modules -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+
+      <div class="layer l-auth" style="margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#d946ef;"></span><span class="layer-name" style="color:#86198f;font-size:9px;">auth/routes.py</span></div>
+        <div class="box b-pink"><div class="box-title">POST /auth/register</div><div class="box-sub">bcrypt hash · create User</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-pink"><div class="box-title">POST /auth/login</div><div class="box-sub">Verify password · issue JWT</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-pink"><div class="box-title">GET /auth/me</div><div class="box-sub">Return current user profile</div></div>
+      </div>
+
+      <div class="layer l-front" style="margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#22c55e;"></span><span class="layer-name" style="color:#15803d;font-size:9px;">student/routes.py</span></div>
+        <div class="box b-green"><div class="box-title">POST /student/upload-resume</div><div class="box-sub">Save file · trigger pipeline · store AnalysisResult</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-green"><div class="box-title">GET /student/ats-report</div><div class="box-sub">Return latest ATS report</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-green"><div class="box-title">GET /student/learning-path</div><div class="box-sub">Return personalised roadmap</div></div>
+      </div>
+
+      <div class="layer l-prog" style="margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#78716c;"></span><span class="layer-name" style="color:#57534e;font-size:9px;">progress/routes.py</span></div>
+        <div class="box b-gray"><div class="box-title">GET /progress/skills</div><div class="box-sub">All SkillProgress for user</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-gray"><div class="box-title">PATCH /progress/skills/{id}</div><div class="box-sub">Update skill status</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-gray"><div class="box-title">GET /progress/score-history</div><div class="box-sub">Time-series ATS scores</div></div>
+      </div>
+
+      <div class="layer l-mock" style="margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#f43f5e;"></span><span class="layer-name" style="color:#be123c;font-size:9px;">mock_test/routes.py</span></div>
+        <div class="box b-red"><div class="box-title">POST /mock_test/generate</div><div class="box-sub">LLM generates MCQ questions</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-red"><div class="box-title">POST /mock_test/submit</div><div class="box-sub">Evaluate answers · store MockTestResult</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-red"><div class="box-title">GET /mock_test/history</div><div class="box-sub">List past test results</div></div>
+      </div>
+
+      <div class="layer l-chat" style="margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#8b5cf6;"></span><span class="layer-name" style="color:#6d28d9;font-size:9px;">chatbot/routes.py</span></div>
+        <div class="box b-vio"><div class="box-title">POST /chatbot/chat</div><div class="box-sub">RAG context retrieval · LLM Q&A response · streaming support</div></div>
+      </div>
+
+      <div class="layer l-llm" style="margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#f97316;"></span><span class="layer-name" style="color:#c2410c;font-size:9px;">recruiter/routes.py</span></div>
+        <div class="box b-ora"><div class="box-title">GET /recruiter/candidates</div><div class="box-sub">Search candidates by skill/role</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-ora"><div class="box-title">GET /recruiter/candidate/{id}/ats</div><div class="box-sub">View candidate ATS report</div></div>
+      </div>
+
+    </div>
+    <div class="arr-v">↕ SQLAlchemy ORM</div>
+
+    <!-- Shared Services -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="layer l-core" style="flex:1;min-width:200px;margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#8b5cf6;"></span><span class="layer-name" style="color:#6d28d9;font-size:9px;">Shared Services</span></div>
+        <div class="box b-pur">
+          <div class="box-title">services/pipeline.py</div>
+          <div class="box-sub">Orchestrates full AI pipeline: reader → parser → normaliser → RAG → ATS → role → path</div>
+        </div>
+      </div>
+      <div class="layer l-data" style="flex:1;min-width:200px;margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#14b8a6;"></span><span class="layer-name" style="color:#0f766e;font-size:9px;">Database Layer</span></div>
+        <div class="box-row" style="gap:6px;">
+          <div class="box b-teal" style="min-width:80px;"><div class="box-title" style="font-size:10px;">db/database.py</div><div class="box-sub">SQLite engine · SessionLocal · Base</div></div>
+          <div class="box b-teal" style="min-width:80px;"><div class="box-title" style="font-size:10px;">models/*.py</div><div class="box-sub">SQLAlchemy ORM models</div></div>
+          <div class="box b-teal" style="min-width:80px;"><div class="box-title" style="font-size:10px;">schemas/*.py</div><div class="box-sub">Pydantic request / response schemas</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fig-cap" style="margin-top:16px;"><b>Figure 4.</b> Backend API architecture built on FastAPI. Six independent route modules handle authentication, student workflow, progress tracking, mock testing, AI chatbot, and recruiter access. All endpoints are secured with JWT Bearer authentication and interact with a SQLite database through SQLAlchemy ORM models.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 5 – FRONTEND
+============================================================ -->
+<div class="diagram-page" id="page-frontend">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 5 — Frontend Application Architecture</div>
+    <div class="diagram-desc">
+      React.js single-page application structure. Shows component hierarchy, routing (React Router), state management, data-fetching pattern, and communication with the FastAPI backend via Axios.
+    </div>
+
+    <!-- App shell -->
+    <div class="layer l-front" style="margin-bottom:10px;">
+      <div class="layer-hdr"><span class="layer-dot" style="background:#22c55e;"></span><span class="layer-name" style="color:#15803d;">App Shell (App.js + React Router)</span><span class="tech-badge tb-re">React.js</span></div>
+      <div class="box-row">
+        <div class="box b-green"><div class="box-title">🌐 BrowserRouter</div><div class="box-sub">Client-side routing</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><div class="box-title">🔒 ProtectedRoute</div><div class="box-sub">JWT token check · redirect to /login if unauthenticated</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><div class="box-title">🧭 Navbar</div><div class="box-sub">Shared top nav · logout</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><div class="box-title">💬 ChatBot Widget</div><div class="box-sub">Floating overlay on all pages</div></div>
+        <div class="arr">→</div>
+        <div class="box b-green"><div class="box-title">🌟 SplashScreen</div><div class="box-sub">Loading animation on startup</div></div>
+      </div>
+    </div>
+    <div class="arr-v">↓ Route-level pages</div>
+
+    <!-- Pages grid -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+
+      <div class="layer" style="background:#f0fdf4;border:1.5px solid #86efac;margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#22c55e;"></span><span class="layer-name" style="color:#15803d;font-size:9px;">/ Login &amp; Register</span></div>
+        <div class="box b-green"><div class="box-title">Login.js</div><div class="box-sub">Email/password form · POST /auth/login · store JWT in localStorage · redirect by role</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-green"><div class="box-title">Register.js</div><div class="box-sub">Student/recruiter signup · POST /auth/register</div></div>
+      </div>
+
+      <div class="layer" style="background:#eff6ff;border:1.5px solid #bfdbfe;margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#3b82f6;"></span><span class="layer-name" style="color:#1d4ed8;font-size:9px;">/student — StudentDashboard.js</span></div>
+        <div class="box b-blue"><div class="box-title">Resume Upload</div><div class="box-sub">File picker · POST /student/upload-resume</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-blue"><div class="box-title">ATS Score Card</div><div class="box-sub">Score gauge · matched / missing skills</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-blue"><div class="box-title">Skill Checklist</div><div class="box-sub">SkillProgress list · status toggle</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-blue"><div class="box-title">Role Suggestions</div><div class="box-sub">AI-inferred role cards + confidence</div></div>
+      </div>
+
+      <div class="layer" style="background:#f5f3ff;border:1.5px solid #ddd6fe;margin-bottom:0;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#8b5cf6;"></span><span class="layer-name" style="color:#6d28d9;font-size:9px;">/learning — LearningPath.js</span></div>
+        <div class="box b-vio"><div class="box-title">Skill Roadmap Cards</div><div class="box-sub">Per-skill cards: level, focus topics, projects, timeline</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-vio"><div class="box-title">Progress Tracker</div><div class="box-sub">Mark topics complete · PATCH /progress/skills</div></div>
+      </div>
+
+      <div class="layer l-mock" style="margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#f43f5e;"></span><span class="layer-name" style="color:#be123c;font-size:9px;">/mock-test — MockTest.js</span></div>
+        <div class="box b-red"><div class="box-title">Test Setup</div><div class="box-sub">Select skill · difficulty · POST /mock_test/generate</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-red"><div class="box-title">Question UI</div><div class="box-sub">MCQ with timer · answer selection</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-red"><div class="box-title">Results Modal</div><div class="box-sub">Score · correct/wrong breakdown · scrollable</div></div>
+      </div>
+
+      <div class="layer" style="background:#fAfAf9;border:1.5px solid #d6d3d1;margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#78716c;"></span><span class="layer-name" style="color:#57534e;font-size:9px;">/progress — ProgressTracker.js</span></div>
+        <div class="box b-gray"><div class="box-title">Score History Chart</div><div class="box-sub">Time-series ATS score chart</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-gray"><div class="box-title">Skill Completion Stats</div><div class="box-sub">Done / in-progress / pending breakdown</div></div>
+      </div>
+
+      <div class="layer l-llm" style="margin-bottom:0;margin-top:10px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#f97316;"></span><span class="layer-name" style="color:#c2410c;font-size:9px;">/recruiter — RecruiterDashboard.js</span></div>
+        <div class="box b-ora"><div class="box-title">Candidate Search</div><div class="box-sub">Filter by skill, role, ATS score</div></div>
+        <div style="height:6px;"></div>
+        <div class="box b-ora"><div class="box-title">Candidate Profile</div><div class="box-sub">Full ATS report · skill match radar</div></div>
+      </div>
+
+    </div>
+    <div class="arr-v">↕ Axios REST calls (JWT Header)</div>
+
+    <!-- Shared Utilities -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="layer" style="background:#f8fafc;border:1.5px solid #e2e8f0;flex:1;margin-bottom:0;min-width:200px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#94a3b8;"></span><span class="layer-name" style="color:#475569;font-size:9px;">src/utils/</span></div>
+        <div class="box-row" style="gap:6px;">
+          <div class="box b-gray" style="min-width:90px;"><div class="box-title" style="font-size:10px;">api.js</div><div class="box-sub">Axios instance with base URL + Authorization header auto-injection</div></div>
+          <div class="box b-gray" style="min-width:90px;"><div class="box-title" style="font-size:10px;">auth.js</div><div class="box-sub">JWT decode · role extraction · token save/clear</div></div>
+        </div>
+      </div>
+      <div class="layer" style="background:#f8fafc;border:1.5px solid #e2e8f0;flex:1;margin-bottom:0;min-width:200px;">
+        <div class="layer-hdr"><span class="layer-dot" style="background:#94a3b8;"></span><span class="layer-name" style="color:#475569;font-size:9px;">src/components/ (Shared)</span></div>
+        <div class="box-row" style="gap:6px;">
+          <div class="box b-gray" style="min-width:90px;"><div class="box-title" style="font-size:10px;">ChatBot.js</div><div class="box-sub">Floating chat widget · RAG Q&A</div></div>
+          <div class="box b-gray" style="min-width:90px;"><div class="box-title" style="font-size:10px;">Navbar.js</div><div class="box-sub">Top nav · role-aware links</div></div>
+          <div class="box b-gray" style="min-width:90px;"><div class="box-title" style="font-size:10px;">SplashScreen.js</div><div class="box-sub">Loading animation</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fig-cap" style="margin-top:16px;"><b>Figure 5.</b> Frontend application architecture built with React.js. The SPA uses React Router for role-based routing, ProtectedRoute components for JWT validation, and a centralised Axios utility for authenticated API communication. Shared components (ChatBot, Navbar) are accessible across all pages.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGE 6 – DATA MODEL
+============================================================ -->
+<div class="diagram-page" id="page-datamodel">
+  <div class="diagram-card">
+    <div class="diagram-title">Fig. 6 — Database Schema &amp; Data Model</div>
+    <div class="diagram-desc">
+      Relational data model of the SQLite database managed through SQLAlchemy ORM. Shows all seven tables, their columns, data types, and foreign-key relationships.
+    </div>
+
+    <!-- ER diagram as tables -->
+    <div class="db-grid" style="margin-bottom:20px;">
+
+      <div class="db-table">
+        <div class="db-thead">👤 User</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">email</span><span class="db-type">VARCHAR UNIQUE</span></div>
+        <div class="db-row"><span class="db-field">hashed_password</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">role</span><span class="db-type">ENUM(student,recruiter)</span></div>
+        <div class="db-row"><span class="db-field">name</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">created_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">📄 Resume</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">file_path</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">parsed_data</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">target_role</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">uploaded_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">📊 AnalysisResult</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">resume_id</span><span class="db-type">INT FK→Resume</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">ats_score</span><span class="db-type">INTEGER</span></div>
+        <div class="db-row"><span class="db-field">matched_skills</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">missing_skills</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">strengths</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">improvements</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">learning_path</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">role_suggestions</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">created_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">📈 ScoreHistory</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">ats_score</span><span class="db-type">INTEGER</span></div>
+        <div class="db-row"><span class="db-field">target_role</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">recorded_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">✅ SkillProgress</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">skill_name</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">status</span><span class="db-type">ENUM(pending,in_progress,done)</span></div>
+        <div class="db-row"><span class="db-field">updated_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">📝 MockTest</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">skill</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">questions</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">difficulty</span><span class="db-type">VARCHAR</span></div>
+        <div class="db-row"><span class="db-field">created_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+      <div class="db-table">
+        <div class="db-thead">🏆 MockTestResult</div>
+        <div class="db-row"><span class="db-field">id</span><span class="db-type">INT PK</span></div>
+        <div class="db-row"><span class="db-field">test_id</span><span class="db-type">INT FK→MockTest</span></div>
+        <div class="db-row"><span class="db-field">user_id</span><span class="db-type">INT FK→User</span></div>
+        <div class="db-row"><span class="db-field">score</span><span class="db-type">INTEGER</span></div>
+        <div class="db-row"><span class="db-field">answers</span><span class="db-type">JSON TEXT</span></div>
+        <div class="db-row"><span class="db-field">submitted_at</span><span class="db-type">DATETIME</span></div>
+      </div>
+
+    </div>
+
+    <!-- Relationship summary -->
+    <div class="layer" style="background:#f8fafc;border:1.5px solid #e2e8f0;margin-bottom:0;">
+      <div class="layer-hdr"><span class="layer-dot" style="background:#6366f1;"></span><span class="layer-name" style="color:#4f46e5;">Entity Relationships</span></div>
+      <div class="box-flow" style="flex-wrap:wrap;gap:8px;">
+        <div class="box b-ind" style="min-width:130px;"><div class="box-title" style="font-size:10px;">User → Resume</div><div class="box-sub">1 : many</div></div>
+        <div class="box b-ind" style="min-width:160px;"><div class="box-title" style="font-size:10px;">Resume → AnalysisResult</div><div class="box-sub">1 : 1 (latest per resume)</div></div>
+        <div class="box b-ind" style="min-width:160px;"><div class="box-title" style="font-size:10px;">User → ScoreHistory</div><div class="box-sub">1 : many (time-series)</div></div>
+        <div class="box b-ind" style="min-width:160px;"><div class="box-title" style="font-size:10px;">User → SkillProgress</div><div class="box-sub">1 : many (per skill)</div></div>
+        <div class="box b-ind" style="min-width:130px;"><div class="box-title" style="font-size:10px;">User → MockTest</div><div class="box-sub">1 : many</div></div>
+        <div class="box b-ind" style="min-width:160px;"><div class="box-title" style="font-size:10px;">MockTest → MockTestResult</div><div class="box-sub">1 : 1</div></div>
+      </div>
+    </div>
+
+    <div class="fig-cap" style="margin-top:16px;"><b>Figure 6.</b> Relational database schema for the AI skill analyser. Seven SQLAlchemy ORM models persist all system state in a SQLite database, with foreign-key relationships linking user identities to their resumes, analysis results, skill progress, mock test records, and longitudinal score history.</div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.diagram-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  btn.classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+</script>
+</body>
+</html>
