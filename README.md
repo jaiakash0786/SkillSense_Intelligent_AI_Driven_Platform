@@ -370,5 +370,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ---
 
 <p align="center">
-  Built with ❤️ by <strong>Jaiakash P</strong> 
+  Built with ❤️ by <strong>Jaiakash P</strong> [published paper .pdf](https://github.com/user-attachments/files/27026687/published.paper.pdf)
+
 </p>
+
