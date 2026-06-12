@@ -496,18 +496,26 @@ function StudentDashboard() {
             {/* Missing Skills */}
             <div className="missing-skills-section">
               <h3>Missing Skills</h3>
-              {evaluation.ats?.missing_skills?.length > 0 ? (
-                <ul className="skills-list">
-                  {evaluation.ats.missing_skills.map((skill, idx) => (
-                    <li key={idx} className="skill-item">
-                      <span className="skill-icon">❌</span>
-                      <span className="skill-name">{skill}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="no-missing">Amazing! No missing skills.</p>
-              )}
+              {(() => {
+                const ms = evaluation.ats?.missing_skills;
+                const skills = Array.isArray(ms)
+                  ? ms
+                  : Array.isArray(ms?.core)
+                  ? ms.core
+                  : [];
+                return skills.length > 0 ? (
+                  <ul className="skills-list">
+                    {skills.map((skill, idx) => (
+                      <li key={idx} className="skill-item">
+                        <span className="skill-icon">❌</span>
+                        <span className="skill-name">{skill}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="no-missing">Amazing! No missing skills.</p>
+                );
+              })()}
             </div>
 
             {/* Action Buttons */}
