@@ -1,3 +1,5 @@
+from typing import Optional
+
 from resume_reader import read_resume
 from resume_parser import parse_resume_with_llm
 from services.skill_normalizer import normalize_skills
@@ -9,7 +11,7 @@ from learning_path_generator import generate_learning_path
 # ── Singleton RAG engine ──────────────────────────────────────────────────────
 # Loaded ONCE when the module is first imported (at server startup).
 # Avoids reloading the 103-layer BERT model on every pipeline call.
-_rag_engine: MetadataRAGEngine | None = None
+_rag_engine: Optional[MetadataRAGEngine] = None
 
 
 def _get_rag() -> MetadataRAGEngine:
@@ -36,7 +38,7 @@ def infer_domain(role_name: str) -> str:
     return "Software Engineering"
 
 
-def run_pipeline(resume_path: str, target_role: str | None = None):
+def run_pipeline(resume_path: str, target_role: Optional[str] = None):
     rag = _get_rag()  # ← Reuse singleton, no reload
 
     resume_text = read_resume(resume_path)

@@ -97,7 +97,6 @@ export default function ProgressTracker() {
             const statusData = await statusRes.json();
             const analysisData = await analysisRes.json();
 
-            console.log("🔍 Analysis Response:", analysisData);
 
             // Score history
             setScoreHistory(Array.isArray(histData) ? histData : []);
@@ -116,9 +115,6 @@ export default function ProgressTracker() {
             const lp = analysis?.learning_path?.learning_path || [];
             const role = analysis?.target_role || analysis?.learning_path?.role || "Candidate";
             
-            console.log("🔍 Analysis Result:", analysis);
-            console.log("📚 Learning Path Extracted:", lp);
-            console.log("🎯 Role Extracted:", role);
             
             setLearningPath(lp);
             setSelectedRole(role);

@@ -228,10 +228,10 @@ def submit_test(
         score=combined_score,
         total_questions=total_mcq + num_coding,   # MCQ + coding questions
         correct_answers=correct_mcq,
-        answers_json=json.dumps([a.dict() for a in payload.answers]),
+        answers_json=json.dumps([a.model_dump() for a in payload.answers]),
         coding_answers_json=json.dumps(evaluated_coding) if evaluated_coding else "[]",
         fullscreen_exits=payload.fullscreen_exits,
-        violations_json=json.dumps([v.dict() for v in payload.violations]) if payload.violations else "[]",
+        violations_json=json.dumps([v.model_dump() for v in payload.violations]) if payload.violations else "[]",
     )
     db.add(result)
 
@@ -297,7 +297,7 @@ def get_assigned_tests(
         db.query(MockTest)
         .filter(
             MockTest.student_id == db_user.id,
-            MockTest.recruiter_id != None,
+            MockTest.recruiter_id.isnot(None),
             MockTest.status == "pending",
         )
         .order_by(MockTest.assigned_at.desc())

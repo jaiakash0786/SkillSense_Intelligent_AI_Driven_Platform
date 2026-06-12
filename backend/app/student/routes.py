@@ -259,7 +259,7 @@ def list_my_resumes(
     for resume in resumes:
         analysis = db.query(AnalysisResult).filter(
             AnalysisResult.resume_id == resume.id
-        ).first()
+        ).order_by(AnalysisResult.id.desc()).first()
 
         ats_score = None
         if analysis:

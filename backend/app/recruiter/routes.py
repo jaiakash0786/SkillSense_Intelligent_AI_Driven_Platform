@@ -79,6 +79,7 @@ def list_candidates(
         analysis = (
             db.query(AnalysisResult)
             .filter(AnalysisResult.resume_id == resume.id)
+            .order_by(AnalysisResult.id.desc())
             .first()
         )
 
