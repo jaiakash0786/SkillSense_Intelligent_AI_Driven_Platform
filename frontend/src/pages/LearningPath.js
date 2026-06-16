@@ -9,7 +9,7 @@ const LEVEL_CONFIG = {
     Advanced: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", icon: "⚡" },
 };
 
-function SkillCard({ item, index, totalSkills, checkedTopics, setCheckedTopics }) {
+function SkillCard({ item, index, totalSkills, checkedTopics, setCheckedTopics, navigate, resumeId, targetRole }) {
     const [expanded, setExpanded] = useState(false);
     const cfg = LEVEL_CONFIG[item.level] || LEVEL_CONFIG["Beginner"];
     const topics = item.focus_topics || [];
@@ -24,6 +24,20 @@ function SkillCard({ item, index, totalSkills, checkedTopics, setCheckedTopics }
             ...prev,
             [skillKey]: { ...(prev[skillKey] || {}), [i]: !((prev[skillKey] || {})[i]) },
         }));
+    };
+
+    const handleTestKnowledge = (e) => {
+        e.stopPropagation();
+        if (!resumeId) {
+            alert("Resume not found. Please upload and evaluate a resume first.");
+            return;
+        }
+        const params = new URLSearchParams({
+            role: targetRole || "",
+            topic: item.skill,
+            resume_id: resumeId,
+        });
+        navigate(`/mock-test?${params.toString()}`);
     };
 
     return (
@@ -86,6 +100,21 @@ function SkillCard({ item, index, totalSkills, checkedTopics, setCheckedTopics }
                                 ))}
                             </ul>
                         </div>
+
+                        {/* Test Knowledge CTA */}
+                        <div className="lp-test-knowledge-wrap">
+                            <button
+                                className="lp-test-knowledge-btn"
+                                style={{ "--tk-color": cfg.color }}
+                                onClick={handleTestKnowledge}
+                                id={`test-knowledge-${index}`}
+                            >
+                                🧠 Test Knowledge — {item.skill}
+                            </button>
+                            <span className="lp-test-knowledge-hint">
+                                Auto-generates an AI quiz for this skill
+                            </span>
+                        </div>
                     </div>
                 )}
             </div>
@@ -99,20 +128,36 @@ function LearningPath() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [checkedTopics, setCheckedTopics] = useState({});
+    const [resumeId, setResumeId] = useState(null);
 
     useEffect(() => {
-        const fetchLearningPath = async () => {
+        const fetchAll = async () => {
             try {
-                const res = await fetch("http://127.0.0.1:8000/student/learning-path", {
-                    headers: { Authorization: `Bearer ${getToken()}` },
-                });
-                const json = await res.json();
-                if (!res.ok) {
-                    setError(json.detail || "Failed to load learning path");
-                } else if (!json.learning_path) {
-                    setError(json.message || "No learning path available yet. Please evaluate a resume first.");
+                // Fetch learning path and latest resume in parallel
+                const [lpRes, resumesRes] = await Promise.all([
+                    fetch("http://127.0.0.1:8000/student/learning-path", {
+                        headers: { Authorization: `Bearer ${getToken()}` },
+                    }),
+                    fetch("http://127.0.0.1:8000/student/resumes", {
+                        headers: { Authorization: `Bearer ${getToken()}` },
+                    }),
+                ]);
+
+                const lpJson = await lpRes.json();
+                if (!lpRes.ok) {
+                    setError(lpJson.detail || "Failed to load learning path");
+                } else if (!lpJson.learning_path) {
+                    setError(lpJson.message || "No learning path available yet. Please evaluate a resume first.");
                 } else {
-                    setData(json);
+                    setData(lpJson);
+                }
+
+                // Extract latest resume_id for the Test Knowledge flow
+                if (resumesRes.ok) {
+                    const resumesList = await resumesRes.json();
+                    if (Array.isArray(resumesList) && resumesList.length > 0) {
+                        setResumeId(resumesList[resumesList.length - 1].resume_id);
+                    }
                 }
             } catch {
                 setError("Server error — make sure the backend is running.");
@@ -120,7 +165,7 @@ function LearningPath() {
                 setLoading(false);
             }
         };
-        fetchLearningPath();
+        fetchAll();
     }, []);
 
     const skills = data?.learning_path?.learning_path || [];
@@ -209,6 +254,9 @@ function LearningPath() {
                                     totalSkills={skills.length}
                                     checkedTopics={checkedTopics}
                                     setCheckedTopics={setCheckedTopics}
+                                    navigate={navigate}
+                                    resumeId={resumeId}
+                                    targetRole={targetRole}
                                 />
                             ))}
                         </div>
